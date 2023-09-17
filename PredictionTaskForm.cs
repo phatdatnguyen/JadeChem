@@ -47,8 +47,8 @@ namespace JadeChem
         private string[]? processedInputColumnNames;
         private string? outputColumnName;
 
-        private VarianceThresholdFilter varianceThresholdFilter;
-        private PCAFilter pcaFilter;
+        private VarianceThresholdFilter? varianceThresholdFilter;
+        private PCAFilter? pcaFilter;
 
         private DataTable? processedDataset;
         private double[][]? processedInputColumns;
@@ -82,8 +82,8 @@ namespace JadeChem
         private torch.ScalarType dataType;
 
         // Dialogs
-        private FeatureExtractionDialog featureExtractionDialog;
-        private DataProcessingDialog dataProcessingDialog;
+        private FeatureExtractionDialog? featureExtractionDialog;
+        private DataProcessingDialog? dataProcessingDialog;
 
         // Flags
         private bool isFeatureExtractionDialogResetNeeded = true;
@@ -990,7 +990,8 @@ namespace JadeChem
                     processedDataset.Columns.Add(outputColumnName, typeof(string));
 
                     for (int rowIndex = 0; rowIndex < inputData.Rows.Count; rowIndex++)
-                        processedDataset.Rows[rowIndex][outputColumnName] = processedOutputColumnForClassification[rowIndex];
+                        if (processedOutputColumnForClassification != null)
+                            processedDataset.Rows[rowIndex][outputColumnName] = processedOutputColumnForClassification[rowIndex];
                 }
             }
             catch (Exception ex)
@@ -1059,7 +1060,8 @@ namespace JadeChem
 
         private void SplitDataButton_Click(object sender, EventArgs e)
         {
-            if (processedInputColumns == null ||
+            if (inputData == null ||
+                processedInputColumns == null ||
                 processedInputColumnNames == null ||
                 outputColumnName == null)
                 return;
@@ -1428,7 +1430,7 @@ namespace JadeChem
 
                     if (predictionType == PredictionType.Regression)
                     {
-                        if (trainOutputColumnForRegression != null)
+                        if (trainOutputColumnForRegression != null && processedInputColumnNames != null)
                         {
                             modelPanel.Controls.Clear();
                             MLPModelControl mlpModelControl = new(predictionType, processedInputColumnNames, trainInputColumns, trainOutputColumnForRegression);
@@ -1440,7 +1442,7 @@ namespace JadeChem
                     }
                     else
                     {
-                        if (trainOutputColumnForClassification != null)
+                        if (trainOutputColumnForClassification != null && processedInputColumnNames != null)
                         {
                             modelPanel.Controls.Clear();
                             MLPModelControl mlpModelControl = new(predictionType, processedInputColumnNames, trainInputColumns, trainOutputColumnForClassification);
@@ -1680,7 +1682,7 @@ namespace JadeChem
             // Update model control
             if (modelPanel.Controls[0].GetType() == typeof(NaiveBayesModelControl))
             {
-                if (model != null && processedInputColumnNames != null && classLabels != null)
+                if (model != null && processedInputColumnNames != null && classLabels != null && outputColumnName != null)
                 {
                     NaiveBayesModelControl naiveBayesModelControl = (NaiveBayesModelControl)modelPanel.Controls[0];
                     naiveBayesModelControl.UpdateNormalDistributionTable((NaiveBayes<NormalDistribution>)model, processedInputColumnNames, classLabels, outputColumnName);
@@ -1770,10 +1772,12 @@ namespace JadeChem
 
             // Add columns to predictionDataGrivView
             predictionDataGridView.Columns.Clear();
-            for (int columnIndex = 0; columnIndex < inputColumnNamesForFeatureExtraction.Length; columnIndex++)
-                predictionDataGridView.Columns.Add(inputColumnNamesForFeatureExtraction[columnIndex], inputColumnNamesForFeatureExtraction[columnIndex]);
-            for (int columnIndex = 0; columnIndex < inputColumnNamesForModel.Length; columnIndex++)
-                predictionDataGridView.Columns.Add(inputColumnNamesForModel[columnIndex], inputColumnNamesForModel[columnIndex]);
+            if (inputColumnNamesForFeatureExtraction != null)
+                for (int columnIndex = 0; columnIndex < inputColumnNamesForFeatureExtraction.Length; columnIndex++)
+                    predictionDataGridView.Columns.Add(inputColumnNamesForFeatureExtraction[columnIndex], inputColumnNamesForFeatureExtraction[columnIndex]);
+            if (inputColumnNamesForModel != null)
+                for (int columnIndex = 0; columnIndex < inputColumnNamesForModel.Length; columnIndex++)
+                    predictionDataGridView.Columns.Add(inputColumnNamesForModel[columnIndex], inputColumnNamesForModel[columnIndex]);
             predictionDataGridView.Columns.Add(outputColumnName, outputColumnName);
             predictionDataGridView.Columns[predictionDataGridView.ColumnCount - 1].ReadOnly = true;
             predictionDataGridView.Rows.Add();
@@ -2095,7 +2099,7 @@ namespace JadeChem
             {
                 predictionDataset = DataFileLoader.LoadCsvFile(openDataFileFileDialog.FileName, predictionDataHasHeadersCheckBox.Checked);
 
-                if (predictionDataset.Columns.Count != inputColumnNamesForFeatureExtraction.Length + inputColumnNamesForModel.Length)
+                if (inputColumnNamesForFeatureExtraction != null && inputColumnNamesForModel != null && predictionDataset.Columns.Count != inputColumnNamesForFeatureExtraction.Length + inputColumnNamesForModel.Length)
                     throw new Exception("Prediction dataset must have the same number of input columns with processed data (" + (inputColumnNamesForFeatureExtraction.Length + inputColumnNamesForModel.Length).ToString() + ")");
             }
             catch (Exception ex)
@@ -2177,9 +2181,9 @@ namespace JadeChem
 
                     // Add the row into the matrix for visualization
                     predictionInputColumns[rowIndex] = processedInputValues;
-                    if (predictionType == PredictionType.Regression)
+                    if (predictionType == PredictionType.Regression && predictionOutputColumnForRegression != null)
                         predictionOutputColumnForRegression[rowIndex] = double.Parse(output);
-                    else
+                    else if (predictionOutputColumnForClassification != null)
                         predictionOutputColumnForClassification[rowIndex] = output;
 
                     // Update progress
@@ -2223,6 +2227,9 @@ namespace JadeChem
         // Helper methods
         private string[] GetInputColumnNamesForFeatureExtraction()
         {
+            if (inputData == null)
+                return Array.Empty<string>();
+
             List<string> inputColumnNamesForFeatureExtraction = new();
 
             for (int columnIndex = 0; columnIndex < columnsDataGridView.Rows.Count; columnIndex++)
@@ -2239,6 +2246,9 @@ namespace JadeChem
 
         private string[] GetInputColumnNamesForModel()
         {
+            if (inputData == null)
+                return Array.Empty<string>();
+
             List<string> inputColumnNamesForModel = new();
 
             for (int columnIndex = 0; columnIndex < columnsDataGridView.Rows.Count; columnIndex++)
@@ -2255,6 +2265,9 @@ namespace JadeChem
 
         private string GetOutputColumnName()
         {
+            if (inputData == null)
+                return "";
+
             List<string> outputColumnNames = new();
 
             for (int columnIndex = 0; columnIndex < columnsDataGridView.Rows.Count; columnIndex++)
@@ -2272,6 +2285,9 @@ namespace JadeChem
 
         private string GetColumnNameFromFeatureColumnName(string featureColumnName)
         {
+            if (inputData == null)
+                return "";
+
             for (int columnIndex = 0; columnIndex < inputData.Columns.Count; columnIndex++)
             {
                 string columnName = inputData.Columns[columnIndex].ColumnName;
@@ -2598,6 +2614,9 @@ namespace JadeChem
 
         private (double[], string) PredictRow(string[] columnNames, string[] cellValues)
         {
+            if (model == null)
+                return (Array.Empty<double>(), "");
+
             // Get input row
             List<double> inputRow = new();
             List<double> inputValuesForModel = new();
@@ -2652,78 +2671,79 @@ namespace JadeChem
             // Data processing
             List<double> scaledInputValues = new();
             // Scaling
-            for (int columnIndex = 0; columnIndex < preprocessedInputColumnNames.Length; columnIndex++)
-            {
-                string columnName = preprocessedInputColumnNames[columnIndex];
-                double value = inputRow[columnIndex];
-
-                // Scale input for model
-                if (inputScalersDictionary.ContainsKey(columnName))
+            if (preprocessedInputColumnNames != null)
+                for (int columnIndex = 0; columnIndex < preprocessedInputColumnNames.Length; columnIndex++)
                 {
-                    double scaledValue = ScaleValue(value, columnName);
+                    string columnName = preprocessedInputColumnNames[columnIndex];
+                    double value = inputRow[columnIndex];
 
-                    // Add scaledValue to the list
-                    scaledInputValues.Add(scaledValue);
+                    // Scale input for model
+                    if (inputScalersDictionary.ContainsKey(columnName))
+                    {
+                        double scaledValue = ScaleValue(value, columnName);
+
+                        // Add scaledValue to the list
+                        scaledInputValues.Add(scaledValue);
+                    }
+                    // Scale feature for model
+                    else if (featureScalersDictionary.ContainsKey(columnName))
+                    {
+                        double scaledValue = ScaleValue(value, columnName);
+
+                        //  Add scaledValue to the list
+                        scaledInputValues.Add(scaledValue);
+                    }
+                    // Add all fingerprint columns to the list
+                    else
+                    {
+                        // Get the original column name before concatenated
+                        string originalColumnName = "";
+                        foreach (string key in featuresDictionary.Keys)
+                            if (columnName.Contains(key))
+                            {
+                                originalColumnName = key;
+                                break;
+                            }
+
+                        int startIndex = columnIndex;
+                        uint nBits = 512;
+                        if (columnName.Contains("MACCS"))
+                            nBits = 167;
+                        if (columnName.Contains("layered_FP") || columnName.Contains("pattern_FP") || columnName.Contains("RDK_FP"))
+                            nBits = 2048;
+                        if (columnName.Contains("AP_FP"))
+                            nBits = (uint)featuresDictionary[originalColumnName]["AP_FP"]["nBits"];
+                        if (columnName.Contains("Morgan_FP"))
+                            nBits = (uint)featuresDictionary[originalColumnName]["Morgan_FP"]["nBits"];
+                        if (columnName.Contains("TT_FP"))
+                            nBits = (uint)featuresDictionary[originalColumnName]["TT_FP"]["nBits"];
+
+                        int[] fpIndices = new int[nBits];
+                        for (int featureColumnIndex = 0; featureColumnIndex < nBits; featureColumnIndex++)
+                            fpIndices[featureColumnIndex] = startIndex + featureColumnIndex;
+
+                        // Add scaledColumn to the matrix
+                        scaledInputValues.AddRange(inputRow.Get(fpIndices));
+
+                        columnIndex += (int)nBits - 1;
+                    }
                 }
-                // Scale feature for model
-                else if (featureScalersDictionary.ContainsKey(columnName))
-                {
-                    double scaledValue = ScaleValue(value, columnName);
-
-                    //  Add scaledValue to the list
-                    scaledInputValues.Add(scaledValue);
-                }
-                // Add all fingerprint columns to the list
-                else
-                {
-                    // Get the original column name before concatenated
-                    string originalColumnName = "";
-                    foreach (string key in featuresDictionary.Keys)
-                        if (columnName.Contains(key))
-                        {
-                            originalColumnName = key;
-                            break;
-                        }
-
-                    int startIndex = columnIndex;
-                    uint nBits = 512;
-                    if (columnName.Contains("MACCS"))
-                        nBits = 167;
-                    if (columnName.Contains("layered_FP") || columnName.Contains("pattern_FP") || columnName.Contains("RDK_FP"))
-                        nBits = 2048;
-                    if (columnName.Contains("AP_FP"))
-                        nBits = (uint)featuresDictionary[originalColumnName]["AP_FP"]["nBits"];
-                    if (columnName.Contains("Morgan_FP"))
-                        nBits = (uint)featuresDictionary[originalColumnName]["Morgan_FP"]["nBits"];
-                    if (columnName.Contains("TT_FP"))
-                        nBits = (uint)featuresDictionary[originalColumnName]["TT_FP"]["nBits"];
-
-                    int[] fpIndices = new int[nBits];
-                    for (int featureColumnIndex = 0; featureColumnIndex < nBits; featureColumnIndex++)
-                        fpIndices[featureColumnIndex] = startIndex + featureColumnIndex;
-
-                    // Add scaledColumn to the matrix
-                    scaledInputValues.AddRange(inputRow.Get(fpIndices));
-
-                    columnIndex += (int)nBits - 1;
-                }
-            }
 
             double[] processedInputValues;
             // Dimensionality reduction
-            if (dimensionalityReductionStepsDictionary.ContainsKey("Variance threshold") && dimensionalityReductionStepsDictionary.ContainsKey("Principle component analysis"))
+            if (dimensionalityReductionStepsDictionary.ContainsKey("Variance threshold") && dimensionalityReductionStepsDictionary.ContainsKey("Principle component analysis") && varianceThresholdFilter != null && pcaFilter != null)
             {
                 // Apply variance threshold and PCA filters
                 processedInputValues = varianceThresholdFilter.Transform(scaledInputValues.ToArray());
 
                 processedInputValues = pcaFilter.Transform(processedInputValues);
             }
-            else if (dimensionalityReductionStepsDictionary.ContainsKey("Variance threshold"))
+            else if (dimensionalityReductionStepsDictionary.ContainsKey("Variance threshold") && varianceThresholdFilter != null)
             {
                 // Apply variance threshold filter only
                 processedInputValues = varianceThresholdFilter.Transform(scaledInputValues.ToArray());
             }
-            else if (dimensionalityReductionStepsDictionary.ContainsKey("Principle component analysis"))
+            else if (dimensionalityReductionStepsDictionary.ContainsKey("Principle component analysis") && pcaFilter != null)
             {
                 // Apply PCA filter only
                 processedInputValues = pcaFilter.Transform(scaledInputValues.ToArray());
@@ -2873,7 +2893,10 @@ namespace JadeChem
 
             // Show output
             if (predictionType == PredictionType.BinaryClassification || predictionType == PredictionType.MulticlassClassification)
-                return (processedInputValues, classLabels[classIndex]);
+                if (classLabels != null)
+                    return (processedInputValues, classLabels[classIndex]);
+                else
+                    return (Array.Empty<double>(), "");
             else // Regression
                 return (processedInputValues, scaledOutput.ToString());
         }
