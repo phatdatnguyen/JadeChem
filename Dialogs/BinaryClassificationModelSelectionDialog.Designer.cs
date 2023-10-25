@@ -48,7 +48,7 @@
             // 
             modelComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             modelComboBox.FormattingEnabled = true;
-            modelComboBox.Items.AddRange(new object[] { "K-Nearest Neighbors", "Decision Tree", "Random Forest", "Naïve Bayes", "Logistic Regression", "Support Vector Machine", "Multilayer Perceptron" });
+            modelComboBox.Items.AddRange(new object[] { "K-Nearest Neighbors", "Minimum Mean Distance", "Decision Tree", "Random Forest", "Naïve Bayes", "Logistic Regression", "Support Vector Machine", "Multilayer Perceptron" });
             modelComboBox.Location = new Point(56, 36);
             modelComboBox.Margin = new Padding(2);
             modelComboBox.Name = "modelComboBox";

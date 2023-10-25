@@ -44,6 +44,9 @@
     <Compile Update="CustomControls\ModelControls\ElasticNetRegressionModelControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Update="CustomControls\ModelControls\MinimumMeanDistanceModelControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Update="CustomControls\ModelControls\LassoRegressionModelControl.cs">
       <SubType>UserControl</SubType>
     </Compile>

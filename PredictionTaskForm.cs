@@ -1303,6 +1303,17 @@ namespace JadeChem
                     ModelLoaded?.Invoke(EventArgs.Empty);
 
                     break;
+                case "Minimum Mean Distance":
+                    modelPanel.Controls.Clear();
+                    MinimumMeanDistanceModelControl minimumMeanDistanceModelControl = new();
+                    modelPanel.Controls.Add(minimumMeanDistanceModelControl);
+                    minimumMeanDistanceModelControl.Dock = DockStyle.Fill;
+                    minimumMeanDistanceModelControl.TrainButtonClicked += TrainModel;
+
+                    // Raise the event
+                    ModelLoaded?.Invoke(EventArgs.Empty);
+
+                    break;
                 case "Naïve Bayes":
                     modelPanel.Controls.Clear();
                     NaiveBayesModelControl naiveBayesModelControl = new();
@@ -1477,6 +1488,11 @@ namespace JadeChem
 
                     model.Learn(trainInputColumns, trainClassIndices);
                     trainedModel = model;
+                }
+                else if (modelPanel.Controls[0].GetType() == typeof(MinimumMeanDistanceModelControl))
+                {
+                    MinimumMeanDistanceClassifier minimumMeanDistanceClassifier = new();
+                    trainedModel = minimumMeanDistanceClassifier.Learn(trainInputColumns, trainClassIndices);
                 }
                 else if (modelPanel.Controls[0].GetType() == typeof(NaiveBayesModelControl))
                 {
@@ -1800,6 +1816,12 @@ namespace JadeChem
             if (model.GetType() == typeof(KNearestNeighbors))
             {
                 KNearestNeighbors model = (KNearestNeighbors)this.model;
+
+                predictedClassIndices = model.Decide(testInputColumns);
+            }
+            else if (model.GetType() == typeof(MinimumMeanDistanceClassifier))
+            {
+                MinimumMeanDistanceClassifier model = (MinimumMeanDistanceClassifier)this.model;
 
                 predictedClassIndices = model.Decide(testInputColumns);
             }
@@ -2760,6 +2782,11 @@ namespace JadeChem
             if (model.GetType() == typeof(KNearestNeighbors))
             {
                 KNearestNeighbors model = (KNearestNeighbors)this.model;
+                classIndex = model.Decide(processedInputValues);
+            }
+            else if (model.GetType() == typeof(MinimumMeanDistanceClassifier))
+            {
+                MinimumMeanDistanceClassifier model = (MinimumMeanDistanceClassifier)this.model;
                 classIndex = model.Decide(processedInputValues);
             }
             else if (model.GetType() == typeof(RandomForest))

@@ -28,3 +28,5 @@ A Windows GUI software for performing machine learning (ML) tasks in chemistry.
   - Multilayer Perceptron (MLP)
 
   *** The ML models in this software are from [Accord.net](http://accord-framework.net/) and [TorchSharp](https://github.com/dotnet/TorchSharp) frameworks.
+  
+  ***User should have administrator right to fully utilize this software.***
