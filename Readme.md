@@ -21,6 +21,7 @@ A Windows GUI software for performing machine learning (ML) tasks in chemistry.
   - Linear Regression
   - Logistic Regression
   - k-Nearest Neighbors
+  - Minimum Mean Distance
   - Naive Bayes
   - Decision Tree
   - Random Forest
