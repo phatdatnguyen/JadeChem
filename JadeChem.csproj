@@ -31,7 +31,7 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="OxyPlot.WindowsForms" Version="2.1.2" />
     <PackageReference Include="RDKit2DotNetStandard" Version="1.0.32" />
-    <PackageReference Include="TorchSharp-cuda-windows" Version="0.100.6" />
+    <PackageReference Include="TorchSharp-cuda-windows" Version="0.101.4" />
   </ItemGroup>
 
   <ItemGroup>
