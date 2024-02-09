@@ -32,6 +32,8 @@
             dataPlotView = new OxyPlot.WindowsForms.PlotView();
             visualizeRegressionTableLayoutPanel = new TableLayoutPanel();
             panel = new Panel();
+            exportButton = new Button();
+            exportFileDialog = new SaveFileDialog();
             visualizeRegressionTableLayoutPanel.SuspendLayout();
             panel.SuspendLayout();
             SuspendLayout();
@@ -44,7 +46,7 @@
             closeButton.Margin = new Padding(4);
             closeButton.Name = "closeButton";
             closeButton.Size = new Size(75, 23);
-            closeButton.TabIndex = 0;
+            closeButton.TabIndex = 1;
             closeButton.Text = "Close";
             closeButton.UseVisualStyleBackColor = true;
             closeButton.Click += CloseButton_Click;
@@ -80,12 +82,33 @@
             // 
             // panel
             // 
+            panel.Controls.Add(exportButton);
             panel.Controls.Add(closeButton);
             panel.Dock = DockStyle.Fill;
             panel.Location = new Point(3, 314);
             panel.Name = "panel";
             panel.Size = new Size(318, 44);
-            panel.TabIndex = 1;
+            panel.TabIndex = 0;
+            // 
+            // exportButton
+            // 
+            exportButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            exportButton.DialogResult = DialogResult.Cancel;
+            exportButton.Location = new Point(150, 11);
+            exportButton.Margin = new Padding(4);
+            exportButton.Name = "exportButton";
+            exportButton.Size = new Size(75, 23);
+            exportButton.TabIndex = 1;
+            exportButton.Text = "Export...";
+            exportButton.UseVisualStyleBackColor = true;
+            exportButton.Click += ExportButton_Click;
+            // 
+            // exportFileDialog
+            // 
+            exportFileDialog.DefaultExt = "csv";
+            exportFileDialog.FileName = "*.csv";
+            exportFileDialog.Filter = "Comma-separated values (csv) files|*.csv";
+            exportFileDialog.Title = "Export losses";
             // 
             // VisualizeLossesDialog
             // 
@@ -115,5 +138,7 @@
         private OxyPlot.WindowsForms.PlotView dataPlotView;
         private TableLayoutPanel visualizeRegressionTableLayoutPanel;
         private Panel panel;
+        private Button exportButton;
+        private SaveFileDialog exportFileDialog;
     }
 }

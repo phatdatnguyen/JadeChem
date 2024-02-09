@@ -1,7 +1,11 @@
-﻿using OxyPlot;
+﻿using Accord.IO;
+using Accord.Math;
+using Accord.Statistics.Kernels;
+using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Legends;
 using OxyPlot.Series;
+using System.Data;
 
 namespace JadeChem.Dialogs
 {
@@ -10,7 +14,7 @@ namespace JadeChem.Dialogs
         #region Fields
         private readonly List<int> trainEpochs;
         private readonly List<float> trainLosses;
-        private readonly List<int> validationEpoch;
+        private readonly List<int> validationEpochs;
         private readonly List<float> validationLosses;
         private readonly string lossFunctionName;
         #endregion
@@ -22,7 +26,7 @@ namespace JadeChem.Dialogs
 
             this.trainEpochs = trainEpochs;
             this.trainLosses = trainLosses;
-            this.validationEpoch = validationEpochs;
+            this.validationEpochs = validationEpochs;
             this.validationLosses = validationLosses;
             this.lossFunctionName = lossFunctionName;
         }
@@ -45,12 +49,12 @@ namespace JadeChem.Dialogs
 
             plotModel.Series.Add(trainLossesLineSeries);
 
-            if (validationEpoch.Count > 0)
+            if (validationEpochs.Count > 0)
             {
                 LineSeries validationLossesLineSeries = new();
-                for (int epochIndex = 0; epochIndex < validationEpoch.Count; epochIndex++)
+                for (int epochIndex = 0; epochIndex < validationEpochs.Count; epochIndex++)
                 {
-                    double x = validationEpoch[epochIndex];
+                    double x = validationEpochs[epochIndex];
                     double y = validationLosses[epochIndex];
 
                     validationLossesLineSeries.Points.Add(new DataPoint(x, y));
@@ -85,6 +89,28 @@ namespace JadeChem.Dialogs
             });
 
             dataPlotView.Model = plotModel;
+        }
+
+        private void ExportButton_Click(object sender, EventArgs e)
+        {
+            if (exportFileDialog.ShowDialog() != DialogResult.OK)
+                return;
+
+            CsvWriter csvWriter = new CsvWriter(exportFileDialog.FileName, ',');
+
+            if (trainLosses != null && validationLosses.Count == 0)
+            {
+                double[][] lossTable =  trainEpochs.ToArray().ToDouble().ToJagged();
+                lossTable = lossTable.Concatenate(trainLosses.ToArray().ToDouble().ToJagged());
+                csvWriter.Write(lossTable.ToTable("Epoch", "Train loss"));
+            }
+            else if (trainLosses != null && validationLosses != null)
+            {
+                double[][] lossTable = trainEpochs.ToArray().ToDouble().ToJagged();
+                lossTable = lossTable.Concatenate(trainLosses.ToArray().ToDouble().ToJagged());
+                lossTable = lossTable.Concatenate(validationLosses.ToArray().ToDouble().ToJagged());
+                csvWriter.Write(lossTable.ToTable("Epoch", "Train loss", "Validation loss"));
+            }
         }
 
         private void CloseButton_Click(object sender, EventArgs e)

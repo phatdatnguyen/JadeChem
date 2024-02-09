@@ -7,6 +7,7 @@ using JadeChem.Utils;
 using TorchSharp;
 using TorchSharp.Modules;
 using System.Data;
+using System.Diagnostics;
 
 namespace JadeChem.CustomControls.ModelControls
 {
@@ -57,6 +58,7 @@ namespace JadeChem.CustomControls.ModelControls
         private readonly List<int> validationEpochs = new();
         private readonly List<float> validationLosses = new();
 
+        private Stopwatch trainingStopwatch = new Stopwatch();
         // Flags
         private bool trainWithValidation = true;
         private bool logWithTensorboard = false;
@@ -745,6 +747,7 @@ namespace JadeChem.CustomControls.ModelControls
                 torch.cuda.manual_seed(randomSeed);
 
                 trainProgressBar.Visible = true;
+                trainingStopwatch.Start();
                 int epochs = (int)epochsNumericUpDown.Value;
                 int startEpochIndex = trainedEpochs;
                 int saveInterval = (int)saveIntervalNumericUpDown.Value;
@@ -777,9 +780,10 @@ namespace JadeChem.CustomControls.ModelControls
                     lrScheduler?.step();
 
                     // Update progress
+                    double elapsed = (double)trainingStopwatch.ElapsedMilliseconds / 1000;
                     trainProgressBar.Value = (int)Math.Ceiling((float)(epochIndex - startEpochIndex + 1) / epochs * 100);
                     trainProgressBar.Update();
-                    trainProgressLabel.Text = "Epoch " + (epochIndex + 1).ToString() + "/" + (startEpochIndex + epochs).ToString();
+                    trainProgressLabel.Text = "Epoch " + (epochIndex + 1).ToString() + "/" + (startEpochIndex + epochs).ToString() + " (" + Math.Round(elapsed, 4).ToString() + " s)";
                     trainProgressLabel.Update();
                     trainLossLabel.Text = "Train loss: " + Math.Round(trainLoss, 4).ToString();
                     trainLossLabel.Update();
@@ -814,11 +818,15 @@ namespace JadeChem.CustomControls.ModelControls
             }
             catch (Exception ex)
             {
+                trainingStopwatch.Stop();
+                trainingStopwatch.Reset();
                 MessageBox.Show(this, ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Cursor = Cursors.Default;
                 return;
             }
 
+            trainingStopwatch.Stop();
+            trainingStopwatch.Reset();
             Cursor = Cursors.Default;
 
             // Raise the event

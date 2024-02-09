@@ -40,7 +40,7 @@ namespace JadeChem
         {
             get
             {
-                return Assembly.GetExecutingAssembly().GetName().Version.ToString();
+                return "1.0.2";
             }
         }
 

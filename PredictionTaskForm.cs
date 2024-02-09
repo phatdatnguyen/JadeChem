@@ -21,6 +21,7 @@ using JadeChem.Models;
 using JadeChem.Utils;
 using TorchSharp;
 using System.Data;
+using System.Data.Common;
 
 namespace JadeChem
 {
@@ -695,6 +696,7 @@ namespace JadeChem
                     this.featureScalersDictionary = dataProcessingDialog.FeatureScalersDictionary.DeepClone();
                     this.outputScalersDictionary = dataProcessingDialog.OutputScalersDictionary.DeepClone();
                     this.dimensionalityReductionStepsDictionary = dataProcessingDialog.DimensionalityReductionStepsDictionary.DeepClone();
+                    
                     // Create the scalers for each column
                     minMaxScalers.Clear();
                     standardScalers.Clear();
@@ -745,7 +747,8 @@ namespace JadeChem
 
                 // Feature extraction
                 List<string> extractedColumnNames = new();
-                double[][] extractedColumns = new double[inputData.Rows.Count][];
+                List<double[]> extractedColumns = new();
+                List<int> extractedIndices = new();
 
                 // Only do feature extraction if there are features to extract
                 if (featureExtractionListBox.Items.Count > 0)
@@ -753,97 +756,116 @@ namespace JadeChem
                     // Loop through the rows of input data
                     for (int rowIndex = 0; rowIndex < inputData.Rows.Count; rowIndex++)
                     {
-                        // Define a dictionary that contains the values to be passed to the row later
-                        Dictionary<string, Dictionary<string, List<double>>> featureValues = new();
-
-                        // Loop throught the list of features to extract them and add them to the dictionary
-                        for (int columnIndex = 0; columnIndex < inputColumnNamesForFeatureExtraction.Length; columnIndex++)
+                        try
                         {
-                            string columnName = inputColumnNamesForFeatureExtraction[columnIndex];
-                            featureValues[columnName] = new Dictionary<string, List<double>>();
-                            foreach (KeyValuePair<string, Dictionary<string, double>> feature in featuresDictionary[columnName])
+                            // Define a dictionary that contains the values to be passed to the row later
+                            Dictionary<string, Dictionary<string, List<double>>> featureValues = new();
+
+                            // Loop throught the list of features to extract them and add them to the dictionary
+                            for (int columnIndex = 0; columnIndex < inputColumnNamesForFeatureExtraction.Length; columnIndex++)
                             {
-                                string smiles = (string)inputData.Rows[rowIndex][columnName];
-                                RWMol molecule = RWMol.MolFromSmiles(smiles);
-                                string featureName = feature.Key;
+                                string columnName = inputColumnNamesForFeatureExtraction[columnIndex];
+                                featureValues[columnName] = new Dictionary<string, List<double>>();
+                                foreach (KeyValuePair<string, Dictionary<string, double>> feature in featuresDictionary[columnName])
+                                {
+                                    string smiles = (string)inputData.Rows[rowIndex][columnName];
+                                    RWMol molecule = RWMol.MolFromSmiles(smiles);
+                                    string featureName = feature.Key;
 
-                                // Extract the feature values
-                                featureValues[columnName][featureName] = ExtractFeature(molecule, columnName, featureName);
+                                    // Extract the feature values
+                                    featureValues[columnName][featureName] = ExtractFeature(molecule, columnName, featureName);
+                                }
                             }
-                        }
 
-                        // Get the extracted column names (only run once)
-                        if (rowIndex == 0)
-                        {
+                            // Get the extracted column names (only run once)
+                            if (rowIndex == 0)
+                            {
+                                // Loop through the list of columns to extract features from
+                                foreach (string columnName in featuresDictionary.Keys)
+                                {
+                                    // Loop throught the list of features extracted for that column
+                                    foreach (KeyValuePair<string, List<double>> feature in featureValues[columnName])
+                                    {
+                                        if (feature.Value.Count == 1)
+                                            // Add 1 column if feature is not fingerprint
+                                            extractedColumnNames.Add(columnName + "_" + feature.Key);
+                                        else
+                                        {
+                                            // Add all columns of the fingerprint
+                                            int fpColumnIndex = 0;
+                                            foreach (double value in feature.Value)
+                                            {
+                                                extractedColumnNames.Add(columnName + "_" + feature.Key + "_" + (fpColumnIndex + 1).ToString());
+                                                fpColumnIndex++;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Put the extracted feature values into a row
+                            List<double> extractedRow = new();
+
                             // Loop through the list of columns to extract features from
                             foreach (string columnName in featuresDictionary.Keys)
                             {
                                 // Loop throught the list of features extracted for that column
                                 foreach (KeyValuePair<string, List<double>> feature in featureValues[columnName])
                                 {
-                                    if (feature.Value.Count == 1)
-                                        // Add 1 column if feature is not fingerprint
-                                        extractedColumnNames.Add(columnName + "_" + feature.Key);
-                                    else
-                                    {
-                                        // Add all columns of the fingerprint
-                                        int fpColumnIndex = 0;
-                                        foreach (double value in feature.Value)
-                                        {
-                                            extractedColumnNames.Add(columnName + "_" + feature.Key + "_" + (fpColumnIndex + 1).ToString());
-                                            fpColumnIndex++;
-                                        }
-                                    }
+                                    // Add values to the new data row
+                                    foreach (double value in feature.Value)
+                                        extractedRow.Add(value);
                                 }
                             }
+
+                            // Add the row to the matrix
+                            extractedColumns.Add(extractedRow.ToArray());
+
+                            processingProgressBar.Visible = true;
+                            processingProgressBar.Value = (int)Math.Ceiling((float)rowIndex / inputData.Rows.Count * 100);
+                            processingProgressBar.Update();
+                            processingProgressLabel.Text = (rowIndex + 1).ToString() + "/" + inputData.Rows.Count.ToString() + " molecules processed...";
+                            processingProgressLabel.Update();
+
+                            extractedIndices.Add(rowIndex);
                         }
-
-                        // Put the extracted feature values into a row
-                        List<double> extractedRow = new();
-
-                        // Loop through the list of columns to extract features from
-                        foreach (string columnName in featuresDictionary.Keys)
+                        catch
                         {
-                            // Loop throught the list of features extracted for that column
-                            foreach (KeyValuePair<string, List<double>> feature in featureValues[columnName])
-                            {
-                                // Add values to the new data row
-                                foreach (double value in feature.Value)
-                                    extractedRow.Add(value);
-                            }
+                            continue;
                         }
-
-                        // Add the row to the matrix
-                        extractedColumns[rowIndex] = extractedRow.ToArray();
-
-                        processingProgressBar.Visible = true;
-                        processingProgressBar.Value = (int)Math.Ceiling((float)rowIndex / inputData.Rows.Count * 100);
-                        processingProgressBar.Update();
-                        processingProgressLabel.Text = (rowIndex + 1).ToString() + "/" + inputData.Rows.Count.ToString() + " molecules processed...";
-                        processingProgressLabel.Update();
                     }
                 }
 
                 // Concatenate input columns for model and extractedValues
                 // Add input columns for model
-                double[][] inputColumns = new double[inputData.Rows.Count][];
+                double[][] inputColumns = new double[extractedIndices.Count][];
                 for (int columnIndex = 0; columnIndex < inputColumnNamesForModel.Length; columnIndex++)
                 {
                     double[] column = inputData.Columns[inputColumnNamesForModel[columnIndex]].ToArray();
 
-                    if (inputColumns[0] == null)
-                        inputColumns = column.ToJagged();
+                    if (extractedIndices.Count == 0) // No feature extraction
+                    {
+                        if (inputColumns[0] == null)
+                            inputColumns = column.ToJagged();
+                        else
+                            inputColumns = inputColumns.Concatenate(column.ToJagged());
+                    }
                     else
-                        inputColumns = inputColumns.Concatenate(column.ToJagged());
+                    {
+                        if (inputColumns[0] == null)
+                            inputColumns = column.Get(extractedIndices).ToJagged();
+                        else
+                            inputColumns = inputColumns.Concatenate(column.Get(extractedIndices).ToJagged());
+                    }
                 }
 
                 // Add extracted columns
-                if (extractedColumns[0] != null)
+                if (extractedIndices.Count != 0)
                 {
-                    if (inputColumns[0] == null)
-                        inputColumns = extractedColumns;
+                    if (inputColumns[0] == null) // No input column for model
+                        inputColumns = extractedColumns.ToArray();
                     else
-                        inputColumns = inputColumns.Concatenate(extractedColumns);
+                        inputColumns = inputColumns.Concatenate(extractedColumns.ToArray());
                 }
 
                 if (inputColumns[0] == null)
@@ -857,7 +879,7 @@ namespace JadeChem
                 processingProgressLabel.Update();
                 Thread.Sleep(500);
 
-                double[][] scaledInputColumns = new double[inputData.Rows.Count][];
+                double[][] scaledInputColumns = new double[extractedIndices.Count][];
                 // Scale input and feature columns
                 for (int columnIndex = 0; columnIndex < preprocessedInputColumnNames.Length; columnIndex++)
                 {
@@ -923,7 +945,7 @@ namespace JadeChem
                 processingProgressLabel.Update();
                 Thread.Sleep(500);
 
-                processedInputColumns = new double[inputData.Rows.Count][];
+                processedInputColumns = new double[extractedIndices.Count][];
                 if (dimensionalityReductionStepsDictionary.ContainsKey("Variance threshold") && dimensionalityReductionStepsDictionary.ContainsKey("Principle component analysis"))
                 {
                     // Apply variance threshold and PCA filters
@@ -963,7 +985,12 @@ namespace JadeChem
                 {
                     // Scale output columns
                     double[] scaledOutputColumn;
-                    double[] column = inputData.Columns[outputColumnName].ToArray();
+                    double[] column;
+                    if (extractedIndices.Count == 0)
+                        column = inputData.Columns[outputColumnName].ToArray();
+                    else
+                        column = inputData.Columns[outputColumnName].ToArray().Get(extractedIndices);
+
                     if (outputScalersDictionary.ContainsKey(outputColumnName))
                         scaledOutputColumn = ScaleColumn(column, outputColumnName);
                     else
@@ -973,7 +1000,10 @@ namespace JadeChem
                 }
                 else
                 {
-                    processedOutputColumnForClassification = inputData.Columns[outputColumnName].ToArray<string>();
+                    if (extractedIndices.Count == 0)
+                        processedOutputColumnForClassification = inputData.Columns[outputColumnName].ToArray<string>();
+                    else
+                        processedOutputColumnForClassification = inputData.Columns[outputColumnName].ToArray<string>().Get(extractedIndices);
                 }
 
                 // Combine the input and output column into a table
@@ -989,9 +1019,18 @@ namespace JadeChem
                     processedDataset = processedInputColumns.ToTable(processedInputColumnNames);
                     processedDataset.Columns.Add(outputColumnName, typeof(string));
 
-                    for (int rowIndex = 0; rowIndex < inputData.Rows.Count; rowIndex++)
-                        if (processedOutputColumnForClassification != null)
-                            processedDataset.Rows[rowIndex][outputColumnName] = processedOutputColumnForClassification[rowIndex];
+                    if (extractedIndices.Count == 0)
+                    {
+                        for (int rowIndex = 0; rowIndex < inputData.Rows.Count; rowIndex++)
+                            if (processedOutputColumnForClassification != null)
+                                processedDataset.Rows[rowIndex][outputColumnName] = processedOutputColumnForClassification[rowIndex];
+                    }
+                    else
+                    {
+                        for (int rowIndex = 0; rowIndex < extractedIndices.Count; rowIndex++)
+                            if (processedOutputColumnForClassification != null)
+                                processedDataset.Rows[rowIndex][outputColumnName] = processedOutputColumnForClassification[rowIndex];
+                    }
                 }
             }
             catch (Exception ex)
