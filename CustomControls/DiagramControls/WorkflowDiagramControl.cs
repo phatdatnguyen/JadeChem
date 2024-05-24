@@ -63,21 +63,21 @@ namespace JadeChem.CustomControls.DiagramControls
 
         #region Events
         public delegate void InputDataBlockClickedEventHandler(object sender, EventArgs e);
-        public event InputDataBlockClickedEventHandler InputDataBlockClicked;
+        public event InputDataBlockClickedEventHandler? InputDataBlockClicked;
         public delegate void ProcessingArrowBlockClickedEventHandler(object sender, EventArgs e);
-        public event ProcessingArrowBlockClickedEventHandler ProcessingArrowBlockClicked;
+        public event ProcessingArrowBlockClickedEventHandler? ProcessingArrowBlockClicked;
         public delegate void ProcessedDataBlockClickedEventHandler(object sender, EventArgs e);
-        public event ProcessedDataBlockClickedEventHandler ProcessedDataBlockClicked;
+        public event ProcessedDataBlockClickedEventHandler? ProcessedDataBlockClicked;
         public delegate void TrainDatasetBlockClickedEventHandler(object sender, EventArgs e);
-        public event TrainDatasetBlockClickedEventHandler TrainDatasetBlockClicked;
+        public event TrainDatasetBlockClickedEventHandler? TrainDatasetBlockClicked;
         public delegate void TestDatasetBlockClickedEventHandler(object sender, EventArgs e);
-        public event TestDatasetBlockClickedEventHandler TestDatasetBlockClicked;
+        public event TestDatasetBlockClickedEventHandler? TestDatasetBlockClicked;
         public delegate void ModelBlockClickedEventHandler(object sender, EventArgs e);
-        public event ModelBlockClickedEventHandler ModelBlockClicked;
+        public event ModelBlockClickedEventHandler? ModelBlockClicked;
         public delegate void EvaluationBlockClickedEventHandler(object sender, EventArgs e);
-        public event EvaluationBlockClickedEventHandler EvaluationBlockClicked;
+        public event EvaluationBlockClickedEventHandler? EvaluationBlockClicked;
         public delegate void PredictionBlockClickedEventHandler(object sender, EventArgs e);
-        public event PredictionBlockClickedEventHandler PredictionBlockClicked;
+        public event PredictionBlockClickedEventHandler? PredictionBlockClicked;
         #endregion
 
         #region Constructor

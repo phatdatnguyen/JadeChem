@@ -30,13 +30,13 @@ namespace JadeChem
         /// </summary>
         private void InitializeComponent()
         {
-            DataGridViewCellStyle dataGridViewCellStyle1 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle2 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle3 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle4 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle5 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle6 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle7 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle8 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle9 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle10 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle11 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle12 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle13 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle14 = new DataGridViewCellStyle();
             mainTableLayoutPanel = new TableLayoutPanel();
             workflowDiagramControl = new WorkflowDiagramControl();
             taskTabControl = new TabControl();
@@ -283,8 +283,8 @@ namespace JadeChem
             // 
             inputDataDataGridView.AllowUserToAddRows = false;
             inputDataDataGridView.AllowUserToDeleteRows = false;
-            dataGridViewCellStyle1.BackColor = Color.FromArgb(224, 224, 224);
-            inputDataDataGridView.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle1;
+            dataGridViewCellStyle8.BackColor = Color.FromArgb(224, 224, 224);
+            inputDataDataGridView.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle8;
             inputDataDataGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             inputDataDataGridView.Dock = DockStyle.Fill;
             inputDataDataGridView.EditMode = DataGridViewEditMode.EditProgrammatically;
@@ -403,8 +403,8 @@ namespace JadeChem
             columnsDataGridView.AllowUserToAddRows = false;
             columnsDataGridView.AllowUserToDeleteRows = false;
             columnsDataGridView.AllowUserToResizeColumns = false;
-            dataGridViewCellStyle2.BackColor = Color.FromArgb(224, 224, 224);
-            columnsDataGridView.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle2;
+            dataGridViewCellStyle9.BackColor = Color.FromArgb(224, 224, 224);
+            columnsDataGridView.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle9;
             columnsDataGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             columnsDataGridView.Columns.AddRange(new DataGridViewColumn[] { columnColumn, inputForFeatureExtractionColumn, inputForModelColumn, outputColumn });
             columnsDataGridView.Dock = DockStyle.Fill;
@@ -631,8 +631,8 @@ namespace JadeChem
             // 
             processedDataDataGridView.AllowUserToAddRows = false;
             processedDataDataGridView.AllowUserToDeleteRows = false;
-            dataGridViewCellStyle3.BackColor = Color.FromArgb(224, 224, 224);
-            processedDataDataGridView.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle3;
+            dataGridViewCellStyle10.BackColor = Color.FromArgb(224, 224, 224);
+            processedDataDataGridView.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle10;
             processedDataDataGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             processedDataDataGridView.Dock = DockStyle.Fill;
             processedDataDataGridView.EditMode = DataGridViewEditMode.EditProgrammatically;
@@ -700,8 +700,8 @@ namespace JadeChem
             // 
             trainDatasetDataGridView.AllowUserToAddRows = false;
             trainDatasetDataGridView.AllowUserToDeleteRows = false;
-            dataGridViewCellStyle4.BackColor = Color.FromArgb(224, 224, 224);
-            trainDatasetDataGridView.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle4;
+            dataGridViewCellStyle11.BackColor = Color.FromArgb(224, 224, 224);
+            trainDatasetDataGridView.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle11;
             trainDatasetDataGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             trainDatasetDataGridView.Dock = DockStyle.Fill;
             trainDatasetDataGridView.EditMode = DataGridViewEditMode.EditProgrammatically;
@@ -748,8 +748,8 @@ namespace JadeChem
             // 
             testDatasetDataGridView.AllowUserToAddRows = false;
             testDatasetDataGridView.AllowUserToDeleteRows = false;
-            dataGridViewCellStyle5.BackColor = Color.FromArgb(224, 224, 224);
-            testDatasetDataGridView.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle5;
+            dataGridViewCellStyle12.BackColor = Color.FromArgb(224, 224, 224);
+            testDatasetDataGridView.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle12;
             testDatasetDataGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             testDatasetDataGridView.Dock = DockStyle.Fill;
             testDatasetDataGridView.EditMode = DataGridViewEditMode.EditProgrammatically;
@@ -978,8 +978,8 @@ namespace JadeChem
             // 
             predictionDataGridView.AllowUserToAddRows = false;
             predictionDataGridView.AllowUserToDeleteRows = false;
-            dataGridViewCellStyle6.BackColor = Color.FromArgb(224, 224, 224);
-            predictionDataGridView.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle6;
+            dataGridViewCellStyle13.BackColor = Color.FromArgb(224, 224, 224);
+            predictionDataGridView.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle13;
             predictionDataGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             predictionDataGridView.Location = new Point(3, 3);
             predictionDataGridView.Name = "predictionDataGridView";
@@ -1084,8 +1084,8 @@ namespace JadeChem
             // 
             predictionDatasetDataGridView.AllowUserToAddRows = false;
             predictionDatasetDataGridView.AllowUserToDeleteRows = false;
-            dataGridViewCellStyle7.BackColor = Color.FromArgb(224, 224, 224);
-            predictionDatasetDataGridView.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle7;
+            dataGridViewCellStyle14.BackColor = Color.FromArgb(224, 224, 224);
+            predictionDatasetDataGridView.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle14;
             predictionDatasetDataGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             predictionDatasetDataGridView.Dock = DockStyle.Fill;
             predictionDatasetDataGridView.EditMode = DataGridViewEditMode.EditProgrammatically;

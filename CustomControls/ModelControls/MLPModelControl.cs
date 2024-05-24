@@ -58,7 +58,8 @@ namespace JadeChem.CustomControls.ModelControls
         private readonly List<int> validationEpochs = new();
         private readonly List<float> validationLosses = new();
 
-        private Stopwatch trainingStopwatch = new Stopwatch();
+        private readonly Stopwatch trainingStopwatch = new();
+
         // Flags
         private bool trainWithValidation = true;
         private bool logWithTensorboard = false;
@@ -464,7 +465,8 @@ namespace JadeChem.CustomControls.ModelControls
 
                     // Reset the neuron dictionary
                     neuronDictionary = new();
-                    long numberOfInputs = linear.weight.shape[0];
+                    long numberOfInputs;
+                    numberOfInputs = linear.weight.shape[0];
                     for (int neuronIndex = 0; neuronIndex < numberOfInputs; neuronIndex++)
                     {
                         List<double> weights = new();

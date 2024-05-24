@@ -20,10 +20,15 @@ namespace JadeChem.CustomControls.EvaluationControls
             this.predictedClassIndices = predictedClassIndices;
             this.expectedClassIndices = expectedClassIndices;
 
+            int selectedIndex = 0;
             for (int classIndex = 0; classIndex < classLabels.Length; classIndex++)
+            {
                 positiveClassComboBox.Items.Add(classLabels[classIndex]);
+                if (classLabels[classIndex] == "1" || classLabels[classIndex].ToLower() == "true")
+                    selectedIndex = classIndex;
+            }
 
-            positiveClassComboBox.SelectedIndex = 0;
+            positiveClassComboBox.SelectedIndex = selectedIndex;
 
             ConfusionMatrix confusionMatrix = new(predictedClassIndices, expectedClassIndices, 0);
 

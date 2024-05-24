@@ -8,8 +8,8 @@ namespace JadeChem.CustomControls.ModelControls
     {
         #region Fields
         private readonly double[][] trainInputColumns;
-        private string[] inputColumnNames;
-        private object model;
+        private string[]? inputColumnNames;
+        private object? model;
         #endregion
 
         #region Property
@@ -158,7 +158,7 @@ namespace JadeChem.CustomControls.ModelControls
 
         private void ViewSupportVectorsButton_Click(object sender, EventArgs e)
         {
-            if (model == null)
+            if (model == null || inputColumnNames == null)
                 return;
 
             if (model.GetType() == typeof(SupportVectorMachine<IKernel>))
