@@ -29,10 +29,10 @@
     <PackageReference Include="Accord.Math" Version="3.8.2-alpha" />
     <PackageReference Include="Accord.Statistics" Version="3.8.2-alpha" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="OxyPlot.WindowsForms" Version="2.2.0" />
-    <PackageReference Include="RDKit2DotNetStandard" Version="1.0.37" />
-    <PackageReference Include="TorchSharp-cuda-windows" Version="0.105.0" />
+    <PackageReference Include="RDKit2DotNetStandard" Version="1.0.42" />
+    <PackageReference Include="TorchSharp-cuda-windows" Version="0.105.2" />
   </ItemGroup>
 
   <ItemGroup>
