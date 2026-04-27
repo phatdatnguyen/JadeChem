@@ -27,15 +27,20 @@ namespace JadeChem.Models
                 throw new ArgumentNullException(nameof(inputColumns));
 
             if (outputColumn == null)
-                throw new ArgumentNullException(nameof(inputColumns));
+                throw new ArgumentNullException(nameof(outputColumn));
 
             Matrix<double> inputMatrix = Matrix<double>.Build.DenseOfRowArrays(inputColumns);
             inputMatrix = inputMatrix.Append(Matrix<double>.Build.Dense(inputMatrix.RowCount, 1, 1)); // Add a column of 1s for intercept
             Vector<double> outputVector = Vector<double>.Build.Dense(outputColumn);
 
+            // Build a regularization matrix that does NOT penalize the intercept term
+            // (the intercept is the last column appended above). Standard ridge practice.
+            int columnCount = inputMatrix.ColumnCount;
+            Matrix<double> regularizationMatrix = Matrix<double>.Build.DenseIdentity(columnCount);
+            regularizationMatrix[columnCount - 1, columnCount - 1] = 0;
+
             Matrix<double> inputMatrixTranspose = inputMatrix.Transpose();
-            Matrix<double> identityMatrix = Matrix<double>.Build.DenseIdentity(inputMatrix.ColumnCount);
-            coefficients = (inputMatrixTranspose * inputMatrix + lambda * identityMatrix).Inverse() * inputMatrixTranspose * outputVector;
+            coefficients = (inputMatrixTranspose * inputMatrix + lambda * regularizationMatrix).Inverse() * inputMatrixTranspose * outputVector;
         }
 
         public double[] Transform(double[][]? inputColumns)

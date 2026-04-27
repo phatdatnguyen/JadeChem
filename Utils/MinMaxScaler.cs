@@ -28,6 +28,10 @@
         {
             minInput = inputs.Min();
             maxInput = inputs.Max();
+            // Guard a constant-valued feature: bump maxInput so Transform doesn't divide by zero.
+            // The result will be a constant equal to minOutput, which matches sklearn's behavior.
+            if (maxInput == minInput)
+                maxInput = minInput + 1;
         }
 
         public double[] Transform(double[] inputs)

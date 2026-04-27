@@ -40,25 +40,37 @@ namespace JadeChem.Models
             var outputVector = Vector<double>.Build.Dense(outputColumn);
 
             int numberOfColumns = inputMatrix.ColumnCount;
+            int interceptIndex = numberOfColumns - 1; // intercept is the appended column
 
             // Initialize coefficients to zeros
             coefficients = Vector<double>.Build.Dense(numberOfColumns);
 
-            double lassoFactor = 2 * lambda * (1 - alpha) * learningRate; // Lasso regularization factor
-            double ridgeFactor = 2 * lambda * alpha * learningRate; // Ridge regularization factor
+            // Proximal gradient method for ElasticNet.
+            // alpha is the L2 (ridge) weight in this codebase's convention; (1-alpha) is the L1 (lasso) weight.
+            //   Smooth part: squared error + lambda*alpha * ||beta||^2  (L2, intercept excluded)
+            //   Non-smooth part: lambda*(1-alpha) * ||beta||_1          (L1, intercept excluded)
+            //   1) gradient step on the smooth part
+            //   2) soft-thresholding for the L1 part
+            // Earlier code applied learningRate twice to both regularization terms.
+            var inputMatrixTranspose = inputMatrix.Transpose();
+            double l2Coef = lambda * alpha;
+            double l1Threshold = learningRate * lambda * (1 - alpha);
+
             for (int iteration = 0; iteration < maxIterations; iteration++)
             {
                 Vector<double> residuals = outputVector - inputMatrix * coefficients;
-                Vector<double> gradients = -2 * inputMatrix.Transpose() * residuals +
-                                          lassoFactor * coefficients.Map(x => x >= 0 ? 1.0 : -1.0) +
-                                          ridgeFactor * coefficients;
+                Vector<double> gradient = -2 * inputMatrixTranspose * residuals;
+                for (int j = 0; j < interceptIndex; j++)
+                    gradient[j] += 2 * l2Coef * coefficients[j];
 
-                for (int columnIndex = 0; columnIndex < numberOfColumns; columnIndex++)
+                coefficients -= learningRate * gradient;
+
+                for (int j = 0; j < interceptIndex; j++)
                 {
-                    double oldCoefficient = coefficients[columnIndex];
-                    double newCoefficient = oldCoefficient - learningRate * gradients[columnIndex];
-
-                    coefficients[columnIndex] = newCoefficient;
+                    double v = coefficients[j];
+                    if (v > l1Threshold) coefficients[j] = v - l1Threshold;
+                    else if (v < -l1Threshold) coefficients[j] = v + l1Threshold;
+                    else coefficients[j] = 0;
                 }
             }
         }

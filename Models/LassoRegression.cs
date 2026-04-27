@@ -38,22 +38,31 @@ namespace JadeChem.Models
             var outputVector = Vector<double>.Build.Dense(outputColumn);
 
             int numberOfColumns = inputMatrix.ColumnCount;
+            int interceptIndex = numberOfColumns - 1; // intercept is the appended column
 
             // Initialize coefficients to zeros
             coefficients = Vector<double>.Build.Dense(numberOfColumns);
 
-            double lambdaFactor = 2 * lambda * learningRate;
+            // Proximal gradient method:
+            //   1) gradient step on the smooth (squared-error) loss
+            //   2) soft-thresholding (proximal operator of the L1 penalty), skipping the intercept
+            // This produces exact zero coefficients (true sparsity) and avoids the
+            // earlier bug where the L1 step was scaled by learningRate^2.
+            var inputMatrixTranspose = inputMatrix.Transpose();
+            double l1Threshold = lambda * learningRate;
+
             for (int iteration = 0; iteration < maxIterations; iteration++)
             {
                 Vector<double> residuals = outputVector - inputMatrix * coefficients;
-                Vector<double> gradients = -2 * inputMatrix.Transpose() * residuals + lambdaFactor * coefficients.Map(x => x >= 0 ? 1.0 : -1.0);
+                Vector<double> gradient = -2 * inputMatrixTranspose * residuals;
+                coefficients -= learningRate * gradient;
 
-                for (int columnIndex = 0; columnIndex < numberOfColumns; columnIndex++)
+                for (int j = 0; j < interceptIndex; j++)
                 {
-                    double oldCoefficient = coefficients[columnIndex];
-                    double newCoefficient = oldCoefficient - learningRate * gradients[columnIndex];
-
-                    coefficients[columnIndex] = newCoefficient;
+                    double v = coefficients[j];
+                    if (v > l1Threshold) coefficients[j] = v - l1Threshold;
+                    else if (v < -l1Threshold) coefficients[j] = v + l1Threshold;
+                    else coefficients[j] = 0;
                 }
             }
         }

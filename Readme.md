@@ -31,3 +31,7 @@ A Windows GUI software for performing machine learning (ML) tasks in chemistry.
   *** The ML models in this software are from [Accord.net](http://accord-framework.net/) and [TorchSharp](https://github.com/dotnet/TorchSharp) frameworks.
   
   ***User should have administrator right to fully utilize this software.***
+
+  ## Citation
+  Please cite this publication if you use this software in your research: [https://doi.org/10.1002/vjch.70121](https://onlinelibrary.wiley.com/doi/abs/10.1002/vjch.70121)
+  

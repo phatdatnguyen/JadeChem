@@ -91,7 +91,7 @@ namespace JadeChem.CustomControls.ModelControls
             double sigma = laplacian.Sigma;
             if (sigma < (double)laplacianSigmaNumericUpDown.Minimum)
                 laplacianSigmaNumericUpDown.Value = laplacianSigmaNumericUpDown.Minimum;
-            else if (sigma > (double)gaussianSigmaNumericUpDown.Maximum)
+            else if (sigma > (double)laplacianSigmaNumericUpDown.Maximum)
                 laplacianSigmaNumericUpDown.Value = laplacianSigmaNumericUpDown.Maximum;
             else
                 laplacianSigmaNumericUpDown.Value = (decimal)sigma;

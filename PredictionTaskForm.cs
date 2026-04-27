@@ -322,7 +322,7 @@ namespace JadeChem
             // Get the SMILES
             int rowIndex = inputDataDataGridView.SelectedRows[0].Index;
             string smiles = (string)inputData.Rows[rowIndex][smilesColumnIndex];
-            RWMol molecule = RWMol.MolFromSmiles(smiles);
+            using RWMol molecule = RWMol.MolFromSmiles(smiles);
             if (molecule == null)
             {
                 MessageBox.Show(this, "Invalid SMILES!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -330,7 +330,7 @@ namespace JadeChem
             }
 
             // Show the molecule
-            MoleculeDialog moleculeDialog = new(molecule);
+            using MoleculeDialog moleculeDialog = new(molecule);
             moleculeDialog.ShowDialog(this);
         }
 
@@ -749,6 +749,7 @@ namespace JadeChem
                 List<string> extractedColumnNames = new();
                 List<double[]> extractedColumns = new();
                 List<int> extractedIndices = new();
+                List<(int RowIndex, string Smiles, string Error)> droppedRows = new();
 
                 // Only do feature extraction if there are features to extract
                 if (featureExtractionListBox.Items.Count > 0)
@@ -756,6 +757,7 @@ namespace JadeChem
                     // Loop through the rows of input data
                     for (int rowIndex = 0; rowIndex < inputData.Rows.Count; rowIndex++)
                     {
+                        string lastSmiles = "";
                         try
                         {
                             // Define a dictionary that contains the values to be passed to the row later
@@ -766,10 +768,13 @@ namespace JadeChem
                             {
                                 string columnName = inputColumnNamesForFeatureExtraction[columnIndex];
                                 featureValues[columnName] = new Dictionary<string, List<double>>();
+                                string smiles = (string)inputData.Rows[rowIndex][columnName];
+                                lastSmiles = smiles;
+                                // Parse the molecule once per (row, column). RWMol wraps native RDKit
+                                // memory, so 'using' is required — otherwise it leaks per molecule.
+                                using RWMol molecule = RWMol.MolFromSmiles(smiles);
                                 foreach (KeyValuePair<string, Dictionary<string, double>> feature in featuresDictionary[columnName])
                                 {
-                                    string smiles = (string)inputData.Rows[rowIndex][columnName];
-                                    RWMol molecule = RWMol.MolFromSmiles(smiles);
                                     string featureName = feature.Key;
 
                                     // Extract the feature values
@@ -829,10 +834,27 @@ namespace JadeChem
 
                             extractedIndices.Add(rowIndex);
                         }
-                        catch
+                        catch (Exception ex)
                         {
+                            droppedRows.Add((rowIndex, lastSmiles, ex.Message));
                             continue;
                         }
+                    }
+
+                    if (droppedRows.Count > 0)
+                    {
+                        const int previewCount = 5;
+                        var preview = string.Join(Environment.NewLine,
+                            droppedRows.Take(previewCount)
+                                       .Select(d => $"  row {d.RowIndex}: '{d.Smiles}' — {d.Error}"));
+                        string more = droppedRows.Count > previewCount
+                            ? $"{Environment.NewLine}  ... and {droppedRows.Count - previewCount} more"
+                            : "";
+                        MessageBox.Show(
+                            $"{droppedRows.Count} of {inputData.Rows.Count} row(s) were skipped during feature extraction:{Environment.NewLine}{Environment.NewLine}{preview}{more}",
+                            "Feature extraction warnings",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning);
                     }
                 }
 
@@ -2113,14 +2135,15 @@ namespace JadeChem
                     // Check for valid input values
                     if (inputColumnNamesForFeatureExtraction != null && inputColumnNamesForFeatureExtraction.Contains(columnNames[columnIndex]))
                     {
-                        // Check for valid SMILES
-                        if (RWMol.MolFromSmiles(cellValues[columnIndex]) == null)
+                        // Check for valid SMILES — wrap in `using` so the validation parse doesn't leak.
+                        using RWMol probe = RWMol.MolFromSmiles(cellValues[columnIndex]);
+                        if (probe == null)
                             throw new Exception("Invalid SMILES!");
                     }
                     else if (inputColumnNamesForModel != null && inputColumnNamesForModel.Contains(columnNames[columnIndex]))
                     {
                         // Check for number
-                        if (!double.TryParse(cellValues[columnIndex], out double result))
+                        if (!double.TryParse(cellValues[columnIndex], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double result))
                             throw new Exception("Invalid input for model!");
                     }
                 }
@@ -2222,14 +2245,15 @@ namespace JadeChem
                         // Check for valid input values
                         if (inputColumnNamesForFeatureExtraction != null && inputColumnNamesForFeatureExtraction.Contains(columnNames[columnIndex]))
                         {
-                            // Check for valid SMILES
-                            if (RWMol.MolFromSmiles(cellValues[columnIndex]) == null)
+                            // Check for valid SMILES — wrap in `using` so the validation parse doesn't leak.
+                            using RWMol probe = RWMol.MolFromSmiles(cellValues[columnIndex]);
+                            if (probe == null)
                                 throw new Exception("Invalid SMILES!");
                         }
                         else if (inputColumnNamesForModel != null && inputColumnNamesForModel.Contains(columnNames[columnIndex]))
                         {
                             // Check for number
-                            if (!double.TryParse(cellValues[columnIndex], out double result))
+                            if (!double.TryParse(cellValues[columnIndex], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double result))
                                 throw new Exception("Invalid input for model!");
                         }
                     }
@@ -2547,7 +2571,7 @@ namespace JadeChem
             }
             if (featureName == "MACCS")
             {
-                ExplicitBitVect bitVect = RDKFuncs.MACCSFingerprintMol(molecule);
+                using ExplicitBitVect bitVect =RDKFuncs.MACCSFingerprintMol(molecule);
                 int[] bitVectInt = Conversion.ExplicitBitVectToIntArray(bitVect);
                 extractedFeatures = new List<double>();
                 for (int bitIndex = 0; bitIndex < bitVectInt.Length; bitIndex++)
@@ -2556,7 +2580,7 @@ namespace JadeChem
             if (featureName == "AP_FP")
             {
                 uint nBits = (uint)featuresDictionary[columnName][featureName]["nBits"];
-                ExplicitBitVect bitVect = RDKFuncs.getHashedAtomPairFingerprintAsBitVect(molecule, nBits);
+                using ExplicitBitVect bitVect =RDKFuncs.getHashedAtomPairFingerprintAsBitVect(molecule, nBits);
                 int[] bitVectInt = Conversion.ExplicitBitVectToIntArray(bitVect);
                 extractedFeatures = new List<double>();
                 for (int bitIndex = 0; bitIndex < bitVectInt.Length; bitIndex++)
@@ -2564,7 +2588,7 @@ namespace JadeChem
             }
             if (featureName == "layered_FP")
             {
-                ExplicitBitVect bitVect = RDKFuncs.LayeredFingerprintMol(molecule);
+                using ExplicitBitVect bitVect =RDKFuncs.LayeredFingerprintMol(molecule);
                 int[] bitVectInt = Conversion.ExplicitBitVectToIntArray(bitVect);
                 extractedFeatures = new List<double>();
                 for (int bitIndex = 0; bitIndex < bitVectInt.Length; bitIndex++)
@@ -2574,7 +2598,7 @@ namespace JadeChem
             {
                 uint radius = (uint)featuresDictionary[columnName][featureName]["radius"];
                 uint nBits = (uint)featuresDictionary[columnName][featureName]["nBits"];
-                ExplicitBitVect bitVect = RDKFuncs.getMorganFingerprintAsBitVect(molecule, radius, nBits);
+                using ExplicitBitVect bitVect =RDKFuncs.getMorganFingerprintAsBitVect(molecule, radius, nBits);
                 int[] bitVectInt = Conversion.ExplicitBitVectToIntArray(bitVect);
                 extractedFeatures = new List<double>();
                 for (int bitIndex = 0; bitIndex < bitVectInt.Length; bitIndex++)
@@ -2582,7 +2606,7 @@ namespace JadeChem
             }
             if (featureName == "pattern_FP")
             {
-                ExplicitBitVect bitVect = RDKFuncs.PatternFingerprintMol(molecule);
+                using ExplicitBitVect bitVect =RDKFuncs.PatternFingerprintMol(molecule);
                 int[] bitVectInt = Conversion.ExplicitBitVectToIntArray(bitVect);
                 extractedFeatures = new List<double>();
                 for (int bitIndex = 0; bitIndex < bitVectInt.Length; bitIndex++)
@@ -2590,7 +2614,7 @@ namespace JadeChem
             }
             if (featureName == "RDK_FP")
             {
-                ExplicitBitVect bitVect = RDKFuncs.RDKFingerprintMol(molecule);
+                using ExplicitBitVect bitVect =RDKFuncs.RDKFingerprintMol(molecule);
                 int[] bitVectInt = Conversion.ExplicitBitVectToIntArray(bitVect);
                 extractedFeatures = new List<double>();
                 for (int bitIndex = 0; bitIndex < bitVectInt.Length; bitIndex++)
@@ -2599,7 +2623,7 @@ namespace JadeChem
             if (featureName == "TT_FP")
             {
                 uint nBits = (uint)featuresDictionary[columnName][featureName]["nBits"];
-                ExplicitBitVect bitVect = RDKFuncs.getHashedTopologicalTorsionFingerprintAsBitVect(molecule, nBits);
+                using ExplicitBitVect bitVect =RDKFuncs.getHashedTopologicalTorsionFingerprintAsBitVect(molecule, nBits);
                 int[] bitVectInt = Conversion.ExplicitBitVectToIntArray(bitVect);
                 extractedFeatures = new List<double>();
                 for (int bitIndex = 0; bitIndex < bitVectInt.Length; bitIndex++)
@@ -2701,10 +2725,10 @@ namespace JadeChem
                         // Loop throught the list of features to extract them and add them to the dictionary
                         [columnName] = new Dictionary<string, List<double>>()
                     };
+                    // Parse the molecule once for this prediction row (RWMol wraps native RDKit memory).
+                    using RWMol molecule = RWMol.MolFromSmiles(cellValue);
                     foreach (KeyValuePair<string, Dictionary<string, double>> feature in featuresDictionary[columnName])
                     {
-                        string smiles = cellValue;
-                        RWMol molecule = RWMol.MolFromSmiles(smiles);
                         string featureName = feature.Key;
 
                         // Extract the feature values

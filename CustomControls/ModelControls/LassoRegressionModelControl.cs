@@ -30,7 +30,7 @@ namespace JadeChem.CustomControls.ModelControls
         #region Methods
         private void LambdaNumericUpDown_ValueChanged(object sender, EventArgs e)
         {
-            Hyperparameters["lambda"] = (int)lambdaNumericUpDown.Value;
+            Hyperparameters["lambda"] = (double)lambdaNumericUpDown.Value;
         }
 
         private void LearningRateNumericUpDown_ValueChanged(object sender, EventArgs e)

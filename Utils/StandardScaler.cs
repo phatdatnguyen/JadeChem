@@ -24,6 +24,10 @@ namespace JadeChem.Utils
         {
             mean = inputs.Mean();
             std = inputs.StandardDeviation();
+            // Guard constant-valued features so Transform doesn't produce NaN/Inf.
+            // sklearn does the same: a feature with zero variance scales to all zeros.
+            if (std == 0)
+                std = 1;
         }
 
         public double[] Transform(double[] inputs)

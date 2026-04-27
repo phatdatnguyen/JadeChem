@@ -27,6 +27,26 @@ namespace JadeChem.Utils
         #endregion
 
         #region Methods
+        // Pick `testRowCount` distinct random indices in [0, totalRowCount) and return (train, test).
+        // Uses a HashSet for O(1) membership checks (the previous int[].Contains() was O(n²))
+        // and avoids the all-zeros pre-allocation that caused index 0 to be biased out of the test set.
+        private static (int[] train, int[] test) SelectIndices(int totalRowCount, int testRowCount, int randomSeed)
+        {
+            Random random = new(randomSeed);
+            HashSet<int> testSet = new(testRowCount);
+            while (testSet.Count < testRowCount)
+                testSet.Add(random.Next(totalRowCount));
+
+            int[] testIndices = testSet.OrderBy(x => x).ToArray();
+            int[] trainIndices = new int[totalRowCount - testRowCount];
+            int trainPos = 0;
+            for (int rowIndex = 0; rowIndex < totalRowCount; rowIndex++)
+                if (!testSet.Contains(rowIndex))
+                    trainIndices[trainPos++] = rowIndex;
+
+            return (trainIndices, testIndices);
+        }
+
         public (double[][], double[][], double[][], double[][]) Split(double[][] inputColumns, double[][] outputColumns, double testSize = 0.3, int randomSeed = 0)
         {
             // Get the number of rows in the processedDataset
@@ -41,36 +61,7 @@ namespace JadeChem.Utils
                 throw new Exception("Invalid split");
             }
 
-            // Split
-            Random random = new(randomSeed);
-            trainIndices = new int[totalRowCount - testRowCount];
-            testIndices = new int[testRowCount];
-
-            // Get the indices for test dataset
-            for (int testRowIndex = 0; testRowIndex < testRowCount; testRowIndex++)
-            {
-                int randomIndex;
-
-                do
-                {
-                    randomIndex = random.Next(totalRowCount);
-                }
-                while (testIndices.Contains(randomIndex));
-
-                testIndices[testRowIndex] = randomIndex;
-            }
-            testIndices = testIndices.OrderBy(x => x).ToArray();
-
-            int trainRowIndex = 0;
-            for (int rowIndex = 0; rowIndex < totalRowCount; rowIndex++)
-            {
-                if (!testIndices.Contains(rowIndex))
-                {
-                    trainIndices[trainRowIndex] = rowIndex;
-                    trainRowIndex++;
-                    continue;
-                }
-            }
+            (trainIndices, testIndices) = SelectIndices(totalRowCount, testRowCount, randomSeed);
 
             // Get the train and test matrix
             double[][] trainInputColumns = inputColumns.GetRows(trainIndices);
@@ -95,36 +86,7 @@ namespace JadeChem.Utils
                 throw new Exception("Invalid split");
             }
 
-            // Split
-            Random random = new(randomSeed);
-            trainIndices = new int[totalRowCount - testRowCount];
-            testIndices = new int[testRowCount];
-
-            // Get the indices for test dataset
-            for (int testRowIndex = 0; testRowIndex < testRowCount; testRowIndex++)
-            {
-                int randomIndex;
-
-                do
-                {
-                    randomIndex = random.Next(totalRowCount);
-                }
-                while (testIndices.Contains(randomIndex));
-
-                testIndices[testRowIndex] = randomIndex;
-            }
-            testIndices = testIndices.OrderBy(x => x).ToArray();
-
-            int trainRowIndex = 0;
-            for (int rowIndex = 0; rowIndex < totalRowCount; rowIndex++)
-            {
-                if (!testIndices.Contains(rowIndex))
-                {
-                    trainIndices[trainRowIndex] = rowIndex;
-                    trainRowIndex++;
-                    continue;
-                }
-            }
+            (trainIndices, testIndices) = SelectIndices(totalRowCount, testRowCount, randomSeed);
 
             // Get the train and test matrix
             double[][] trainInputColumns = inputColumns.GetRows(trainIndices);
