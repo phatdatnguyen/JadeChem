@@ -27,6 +27,8 @@ namespace JadeChem.Models
         public void Learn(double[][]? inputColumns, double[]? outputColumn)
         {
             // Preserve the application's convention: alpha = 0 is Lasso, alpha = 1 is Ridge.
+            // Objective: RSS + 2 * lambda * (1 - alpha) * |weights| + lambda * alpha * weights^2.
+            // RegressionMath applies soft thresholding and excludes the intercept from both penalties.
             coefficients = RegressionMath.Fit(inputColumns, outputColumn, lambda * (1 - alpha),
                 lambda * alpha, learningRate, maxIterations);
         }

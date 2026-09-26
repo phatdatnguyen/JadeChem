@@ -36,3 +36,7 @@ A Windows GUI software for performing machine learning (ML) tasks in chemistry.
 
 On Windows, run `dotnet run --project tests/JadeChem.RegressionChecks.csproj`.
 See [tests/README.md](tests/README.md) for coverage, behavior changes, and remaining limitations.
+
+## Citation
+
+Please cite this publication if you use this software in your research: [https://doi.org/10.1002/vjch.70121](https://onlinelibrary.wiley.com/doi/abs/10.1002/vjch.70121)

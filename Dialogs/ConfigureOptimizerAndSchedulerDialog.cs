@@ -1,4 +1,6 @@
-﻿namespace JadeChem.Dialogs
+﻿using System.Globalization;
+
+namespace JadeChem.Dialogs
 {
     public partial class ConfigureOptimizerAndSchedulerDialog : Form
     {
@@ -21,13 +23,13 @@
             optimizerNameTextBox.Text = optimizerName;
             this.optimizerParameters = optimizerParameters;
             foreach (KeyValuePair<string, double> parameter in optimizerParameters)
-                optimizerParametersDataGridView.Rows.Add(parameter.Key, parameter.Value.ToString());
+                optimizerParametersDataGridView.Rows.Add(parameter.Key, parameter.Value.ToString(CultureInfo.InvariantCulture));
 
             // Scheduler
             lrSchedulerNameTextBox.Text = lrSchedulerName;
             this.lrSchedulerParameters = lrSchedulerParameters;
             foreach (KeyValuePair<string, double> parameter in lrSchedulerParameters)
-                lrSchedulerParametersDataGridView.Rows.Add(parameter.Key, parameter.Value.ToString());
+                lrSchedulerParametersDataGridView.Rows.Add(parameter.Key, parameter.Value.ToString(CultureInfo.InvariantCulture));
         }
         #endregion
 
@@ -43,7 +45,7 @@
             // Optimizer parameters
             for (int rowIndex = 0; rowIndex < optimizerParameters.Count; rowIndex++)
             {
-                parseError = !double.TryParse(optimizerParametersDataGridView.Rows[rowIndex].Cells[1].Value.ToString(), out double value);
+                parseError = !double.TryParse(optimizerParametersDataGridView.Rows[rowIndex].Cells[1].Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double value);
                 if (parseError)
                 {
                     break;
@@ -60,7 +62,7 @@
             // Scheduler parameters
             for (int rowIndex = 0; rowIndex < lrSchedulerParameters.Count; rowIndex++)
             {
-                parseError = !double.TryParse(lrSchedulerParametersDataGridView.Rows[rowIndex].Cells[1].Value.ToString(), out double value);
+                parseError = !double.TryParse(lrSchedulerParametersDataGridView.Rows[rowIndex].Cells[1].Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double value);
                 if (parseError)
                 {
                     break;

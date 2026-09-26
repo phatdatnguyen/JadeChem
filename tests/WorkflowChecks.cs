@@ -24,7 +24,7 @@ internal static class WorkflowChecks
 
         Check.Run("RDKit feature extraction keeps headers after an invalid first molecule", () =>
         {
-            using var form = new PredictionTaskForm();
+            using var form = new WarningCapturingPredictionTaskForm();
             var data = new DataTable();
             data.Columns.Add("smiles", typeof(string));
             data.Columns.Add("class", typeof(string));
@@ -45,6 +45,8 @@ internal static class WorkflowChecks
             Check.Near(16.043, Convert.ToDouble(processed.Rows[0][0]), 0.001);
             Check.Equal("a", Convert.ToString(processed.Rows[0][1]));
             Check.Equal("b", Convert.ToString(processed.Rows[1][1]));
+            Check.Equal(true, form.Warning?.Contains("1 of 4 row(s)") == true);
+            Check.Equal(true, form.Warning?.Contains("not-a-smiles") == true);
         });
 
         Check.Run("Reprocessing clears old trained model and evaluation data", () =>
@@ -91,6 +93,21 @@ internal static class WorkflowChecks
             Check.Throws<ArgumentException>(() => Invoke(form, "PredictRow", new[] { "x", "other" }, new[] { "3", "11" }));
             Check.Throws<ArgumentException>(() => Invoke(form, "PredictRow", new[] { "x", "x" }, new[] { "3", "11" }));
             Check.Throws<ArgumentException>(() => Invoke(form, "PredictRow", new[] { "x", "z" }, new[] { "NaN", "11" }));
+        });
+
+        Check.Run("Prediction parses decimal-point inputs independently of Windows culture", () =>
+        {
+            var previousCulture = System.Globalization.CultureInfo.CurrentCulture;
+            try
+            {
+                System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("de-DE");
+                using var form = CreatePredictionForm();
+                var prediction = ((double[], string))Invoke(form, "PredictRow", new[] { "z", "x" }, new[] { "2.5", "1.25" })!;
+                Check.Near(22, double.Parse(prediction.Item2));
+                Check.Near(1.25, prediction.Item1[0]);
+                Check.Near(2.5, prediction.Item1[1]);
+            }
+            finally { System.Globalization.CultureInfo.CurrentCulture = previousCulture; }
         });
 
         Check.Run("Loading prediction data clears previous visualization arrays", () =>
@@ -152,22 +169,30 @@ internal static class WorkflowChecks
         return form;
     }
 
+    private static Type ReflectedType(object instance) => instance is PredictionTaskForm ? typeof(PredictionTaskForm) : instance.GetType();
+
     private static T Get<T>(object instance, string field) =>
-        (T)instance.GetType().GetField(field, BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(instance)!;
+        (T)ReflectedType(instance).GetField(field, BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(instance)!;
 
     private static void Set(object instance, string field, object value) =>
-        instance.GetType().GetField(field, BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(instance, value);
+        ReflectedType(instance).GetField(field, BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(instance, value);
 
     private static object? Invoke(object instance, string method, params object[] args)
     {
         try
         {
-            return instance.GetType().GetMethod(method, BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(instance, args);
+            return ReflectedType(instance).GetMethod(method, BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(instance, args);
         }
         catch (TargetInvocationException ex) when (ex.InnerException != null)
         {
             ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
             throw;
         }
+    }
+
+    private sealed class WarningCapturingPredictionTaskForm : PredictionTaskForm
+    {
+        public string? Warning { get; private set; }
+        protected override void ShowFeatureExtractionWarnings(string message) => Warning = message;
     }
 }

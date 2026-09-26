@@ -22,6 +22,7 @@ namespace JadeChem.Models
 
         public void Learn(double[][]? inputColumns, double[]? outputColumn)
         {
+            // Proximal L1 fit: RSS + 2 * lambda * |weights|, with an unpenalized intercept.
             coefficients = RegressionMath.Fit(inputColumns, outputColumn, lambda, 0, learningRate, maxIterations);
         }
 

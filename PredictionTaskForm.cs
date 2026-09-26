@@ -22,6 +22,7 @@ using JadeChem.Utils;
 using TorchSharp;
 using System.Data;
 using System.Data.Common;
+using System.Globalization;
 
 namespace JadeChem
 {
@@ -163,6 +164,11 @@ namespace JadeChem
         #endregion
 
         #region Methods
+        protected virtual void ShowFeatureExtractionWarnings(string message)
+        {
+            MessageBox.Show(this, message, "Feature extraction warnings", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+
         private static void DisposeChildControls(Control parent)
         {
             foreach (Control control in parent.Controls.Cast<Control>().ToArray())
@@ -864,6 +870,7 @@ namespace JadeChem
                 List<string> extractedColumnNames = new();
                 List<double[]> extractedColumns = new();
                 List<int> extractedIndices = new();
+                List<(int RowIndex, string Smiles, string Error)> droppedRows = new();
 
                 // Only do feature extraction if there are features to extract
                 bool hasFeatureExtraction = featuresDictionary.Values.Any(features => features.Count > 0);
@@ -872,6 +879,7 @@ namespace JadeChem
                     // Loop through the rows of input data
                     for (int rowIndex = 0; rowIndex < inputData.Rows.Count; rowIndex++)
                     {
+                        string lastSmiles = "";
                         try
                         {
                             // Define a dictionary that contains the values to be passed to the row later
@@ -882,12 +890,17 @@ namespace JadeChem
                             {
                                 string columnName = inputColumnNamesForFeatureExtraction[columnIndex];
                                 featureValues[columnName] = new Dictionary<string, List<double>>();
+                                if (featuresDictionary[columnName].Count == 0)
+                                    continue;
+                                string smiles = (string)inputData.Rows[rowIndex][columnName];
+                                lastSmiles = smiles;
+                                // Parse the molecule once per (row, column). RWMol wraps native RDKit
+                                // memory, so 'using' is required — otherwise it leaks per molecule.
+                                using RWMol molecule = RWMol.MolFromSmiles(smiles);
+                                if (molecule == null)
+                                    throw new ArgumentException("Invalid SMILES.");
                                 foreach (KeyValuePair<string, Dictionary<string, double>> feature in featuresDictionary[columnName])
                                 {
-                                    string smiles = (string)inputData.Rows[rowIndex][columnName];
-                                    using RWMol molecule = RWMol.MolFromSmiles(smiles);
-                                    if (molecule == null)
-                                        throw new ArgumentException("Invalid SMILES.");
                                     string featureName = feature.Key;
 
                                     // Extract the feature values
@@ -947,10 +960,24 @@ namespace JadeChem
 
                             extractedIndices.Add(rowIndex);
                         }
-                        catch
+                        catch (Exception ex)
                         {
+                            droppedRows.Add((rowIndex, lastSmiles, ex.Message));
                             continue;
                         }
+                    }
+
+                    if (droppedRows.Count > 0)
+                    {
+                        const int previewCount = 5;
+                        var preview = string.Join(Environment.NewLine,
+                            droppedRows.Take(previewCount)
+                                       .Select(d => $"  row {d.RowIndex}: '{d.Smiles}' — {d.Error}"));
+                        string more = droppedRows.Count > previewCount
+                            ? $"{Environment.NewLine}  ... and {droppedRows.Count - previewCount} more"
+                            : "";
+                        ShowFeatureExtractionWarnings(
+                            $"{droppedRows.Count} of {inputData.Rows.Count} row(s) were skipped during feature extraction:{Environment.NewLine}{Environment.NewLine}{preview}{more}");
                     }
                 }
 
@@ -2351,7 +2378,7 @@ namespace JadeChem
                             throw new Exception("Input value cannot be empty!");
 
                         columnNames[columnIndex] = predictionDatasetDataGridView.Columns[columnIndex].HeaderText;
-                        cellValues[columnIndex] = predictionDatasetDataGridView.Rows[rowIndex].Cells[columnIndex].Value.ToString() ?? "";
+                        cellValues[columnIndex] = Convert.ToString(predictionDatasetDataGridView.Rows[rowIndex].Cells[columnIndex].Value, CultureInfo.InvariantCulture) ?? "";
 
                     }
 
@@ -2811,7 +2838,7 @@ namespace JadeChem
             List<double> inputRow = new();
             foreach (string columnName in inputColumnNamesForModel)
             {
-                if (!double.TryParse(valuesByColumn[columnName], out double value) || !double.IsFinite(value))
+                if (!double.TryParse(valuesByColumn[columnName], NumberStyles.Float, CultureInfo.InvariantCulture, out double value) || !double.IsFinite(value))
                     throw new ArgumentException($"Column '{columnName}' must contain a finite number.");
                 inputRow.Add(value);
             }

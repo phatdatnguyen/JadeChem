@@ -1,4 +1,6 @@
-﻿namespace JadeChem.Dialogs
+﻿using System.Globalization;
+
+namespace JadeChem.Dialogs
 {
     public partial class EditParametersDialog : Form
     {
@@ -20,7 +22,7 @@
         {
             parametersDataGridView.Rows.Clear();
             foreach (KeyValuePair<string, double> parameter in Parameters)
-                parametersDataGridView.Rows.Add(parameter.Key, parameter.Value);
+                parametersDataGridView.Rows.Add(parameter.Key, parameter.Value.ToString(CultureInfo.InvariantCulture));
         }
 
         private void EditParametersDialog_FormClosing(object sender, FormClosingEventArgs e)
@@ -33,7 +35,7 @@
 
             for (int rowIndex = 0; rowIndex < Parameters.Count; rowIndex++)
             {
-                parseError = !double.TryParse(parametersDataGridView.Rows[rowIndex].Cells[1].Value.ToString(), out double value);
+                parseError = !double.TryParse(parametersDataGridView.Rows[rowIndex].Cells[1].Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double value);
                 if (parseError)
                 {
                     break;
