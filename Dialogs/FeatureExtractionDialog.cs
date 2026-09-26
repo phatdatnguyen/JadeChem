@@ -30,11 +30,17 @@
                 columnListBox.Items.Add(FeaturesDictionary.Keys.ElementAt(columnIndex));
 
             // Select the first column
-            columnListBox.SelectedIndex = 0;
+            if (columnListBox.Items.Count > 0)
+                columnListBox.SelectedIndex = 0;
+            else
+                featuresListView.Enabled = false;
         }
 
         private void ColumnListBox_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (columnListBox.SelectedIndex == -1)
+                return;
+
             // Loop through the list of features
             foreach (ListViewItem item in featuresListView.Items)
             {
@@ -90,7 +96,7 @@
         private void FeaturesListView_ItemChecked(object sender, ItemCheckedEventArgs e)
         {
             // Do nothing the the item was checked/unchecked by code
-            if (resettingFeatures)
+            if (resettingFeatures || columnListBox.SelectedIndex == -1)
                 return;
 
             // Add/remove the item from the dictionary
@@ -98,7 +104,8 @@
             {
                 if (e.Item.Text == "AP_FP" || e.Item.Text == "TT_FP")
                 {
-                    if (FeaturesDictionary[columnListBox.Text].TryGetValue(e.Item.Text, out var feature) && feature.Count == 1)
+                    if (FeaturesDictionary[columnListBox.Text].TryGetValue(e.Item.Text, out var feature)
+                        && feature.ContainsKey("nBits"))
                     {
                         // Check if the parameters is already in the dictionary
                         int nBits = (int)feature["nBits"];
@@ -117,7 +124,8 @@
                 }
                 else if (e.Item.Text == "Morgan_FP")
                 {
-                    if (FeaturesDictionary[columnListBox.Text].TryGetValue(e.Item.Text, out var feature) && feature.Count == 1)
+                    if (FeaturesDictionary[columnListBox.Text].TryGetValue(e.Item.Text, out var feature)
+                        && feature.ContainsKey("radius") && feature.ContainsKey("nBits"))
                     {
                         // Check if the parameters is already in the dictionary
                         double radius = feature["radius"];

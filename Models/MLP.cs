@@ -13,6 +13,10 @@ namespace JadeChem.Models
     {
         #region Field
         private readonly Sequential sequential;
+        private readonly int inputSize;
+        private readonly int[] hiddenSizes;
+        private readonly string[] activationFunctions;
+        private readonly int outputSize;
         #endregion
 
         #region Property
@@ -22,6 +26,10 @@ namespace JadeChem.Models
         #region Constructor
         public MLP(string name, int inputSize, int[] hiddenSizes, string[] activationFunctions, int outputSize) : base(name)
         {
+            this.inputSize = inputSize;
+            this.hiddenSizes = (int[])hiddenSizes.Clone();
+            this.activationFunctions = (string[])activationFunctions.Clone();
+            this.outputSize = outputSize;
             List<(string, Module<Tensor, Tensor>)> modules = new();
             for (int layerIndex = 0; layerIndex < hiddenSizes.Length; layerIndex++)
             {
@@ -62,6 +70,9 @@ namespace JadeChem.Models
         #endregion
 
         #region Method
+        internal MLP CreateWithSameArchitecture() =>
+            new(GetName(), inputSize, hiddenSizes, activationFunctions, outputSize);
+
         public override Tensor forward(Tensor input)
         {
             Tensor x = input;

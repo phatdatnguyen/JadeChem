@@ -7,11 +7,15 @@
         readonly double maxOutput = 1;
         double minInput = 0;
         double maxInput = 1;
+        double inputRange = 1;
         #endregion
 
         #region Constructor
         public MinMaxScaler(double minOutput = 0, double maxOutput = 1)
         {
+            if (!double.IsFinite(minOutput) || !double.IsFinite(maxOutput) || minOutput >= maxOutput)
+                throw new ArgumentException("The output range must have finite bounds with minimum less than maximum.");
+
             this.minOutput = minOutput;
             this.maxOutput = maxOutput;
         }
@@ -26,8 +30,15 @@
 
         public void Fit(double[] inputs)
         {
+            ArgumentNullException.ThrowIfNull(inputs);
+            if (inputs.Length == 0 || inputs.Any(value => !double.IsFinite(value)))
+                throw new ArgumentException("Scaling requires at least one finite value and no missing or infinite values.", nameof(inputs));
+
             minInput = inputs.Min();
             maxInput = inputs.Max();
+            // Use unit scale for constant columns so transforms remain finite and
+            // inverse transforms still recover the original values.
+            inputRange = maxInput == minInput ? 1 : maxInput - minInput;
         }
 
         public double[] Transform(double[] inputs)
@@ -36,7 +47,7 @@
             for (int elementIndex = 0; elementIndex < inputs.Length; elementIndex++)
             {
                 // Scale to range (0, 1)
-                outputs[elementIndex] = (inputs[elementIndex] - minInput) / (maxInput - minInput);
+                outputs[elementIndex] = (inputs[elementIndex] - minInput) / inputRange;
 
                 // Scale to range (minOutput, maxOutput)
                 outputs[elementIndex] = outputs[elementIndex] * (maxOutput - minOutput) + minOutput;
@@ -48,7 +59,7 @@
         public double Transform(double input)
         {
             // Scale to range (0, 1)
-            double output = (input - minInput) / (maxInput - minInput);
+            double output = (input - minInput) / inputRange;
 
             // Scale to range (minOutput, maxOutput)
             output = output * (maxOutput - minOutput) + minOutput;
@@ -65,7 +76,7 @@
                 inputs[elementIndex] = (outputs[elementIndex] - minOutput) / (maxOutput - minOutput);
 
                 // Scale to range (minInput, maxInput)
-                inputs[elementIndex] = inputs[elementIndex] * (maxInput - minInput) + minInput;
+                inputs[elementIndex] = inputs[elementIndex] * inputRange + minInput;
             }
 
             return inputs;
@@ -77,7 +88,7 @@
             double input = (output - minOutput) / (maxOutput - minOutput);
 
             // Scale to range (minInput, maxInput)
-            input = input * (maxInput - minInput) + minInput;
+            input = input * inputRange + minInput;
 
             return input;
         }

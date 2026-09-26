@@ -10,7 +10,7 @@ namespace JadeChem.CustomControls.EvaluationControls
         {
             InitializeComponent();
 
-            GeneralConfusionMatrix generalConfusionMatrix = new(predictedClassIndices, expectedClassIndices);
+            GeneralConfusionMatrix generalConfusionMatrix = new(classLabels.Length, predictedClassIndices, expectedClassIndices);
 
             DataTable confusionMatrixTable = new();
             for (int columnIndex = 0; columnIndex <= classLabels.Length; columnIndex++)

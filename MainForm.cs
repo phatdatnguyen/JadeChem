@@ -31,7 +31,7 @@
 
         private void AboutToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            AboutBox aboutBox = new();
+            using AboutBox aboutBox = new();
             aboutBox.ShowDialog(this);
         }
 

@@ -1,6 +1,6 @@
 ﻿using System.Data;
 using Accord.IO;
-using Accord.Math;
+using System.Globalization;
 
 namespace JadeChem.Utils
 {
@@ -10,25 +10,26 @@ namespace JadeChem.Utils
         public static DataTable LoadCsvFile(string filePath, bool hasHeaders)
         {
             string extension = Path.GetExtension(filePath);
-            if (extension == ".csv")
+            if (string.Equals(extension, ".csv", StringComparison.OrdinalIgnoreCase))
             {
                 // Load the .csv file
-                CsvReader csvReader = new(filePath, hasHeaders)
+                using CsvReader csvReader = new(filePath, hasHeaders)
                 {
                     Delimiter = ',',
                     SkipEmptyLines = true,
                     MissingFieldAction = MissingFieldAction.ReplaceByEmpty
                 };
-                DataTable loadedData = csvReader.ToTable();
+                using DataTable loadedData = csvReader.ToTable();
 
                 // Remove null row
-                for (int rowIndex = 0; rowIndex < loadedData.Rows.Count; rowIndex++)
+                for (int rowIndex = loadedData.Rows.Count - 1; rowIndex >= 0; rowIndex--)
                 {
                     for (int columnIndex = 0; columnIndex < loadedData.Columns.Count; columnIndex++)
-                        if (loadedData.Rows[rowIndex][columnIndex] == DBNull.Value || (string)loadedData.Rows[rowIndex][columnIndex] == "")
+                        if (loadedData.Rows[rowIndex][columnIndex] == DBNull.Value ||
+                            string.IsNullOrWhiteSpace((string)loadedData.Rows[rowIndex][columnIndex]))
                         {
                             loadedData.Rows.Remove(loadedData.Rows[rowIndex]);
-                            rowIndex--;
+                            break;
                         }
                 }
 
@@ -36,47 +37,41 @@ namespace JadeChem.Utils
 
                 // Check for invalid data
                 if (loadedData.Columns.Count < 1 || loadedData.Rows.Count == 0)
-                    throw new Exception("Invalid data!");
+                    throw new InvalidDataException("The CSV file contains no complete data rows.");
 
                 // Convert number column to double type
                 DataTable inputData = new();
-                List<int> indicesOfNumericColumns = new();
+                bool[] numericColumns = new bool[loadedData.Columns.Count];
                 for (int columnIndex = 0; columnIndex < loadedData.Columns.Count; columnIndex++)
                 {
                     string columnName = loadedData.Columns[columnIndex].ColumnName;
 
-                    try
-                    {
-                        loadedData.Columns[columnIndex].ToArray(); // This will throw an exception if any data is not numeric
-                        indicesOfNumericColumns.Add(columnIndex);
-                        inputData.Columns.Add(columnName, typeof(double));
-                    }
-                    catch
-                    {
-                        inputData.Columns.Add(columnName, typeof(string));
-                    }
+                    // CSV numeric values use a decimal point, independently of the UI locale.
+                    numericColumns[columnIndex] = loadedData.Rows.Cast<DataRow>().All(row =>
+                        double.TryParse((string)row[columnIndex], NumberStyles.Float, CultureInfo.InvariantCulture, out _));
+                    inputData.Columns.Add(columnName, numericColumns[columnIndex] ? typeof(double) : typeof(string));
                 }
                 for (int rowIndex = 0; rowIndex < loadedData.Rows.Count; rowIndex++)
                 {
                     DataRow row = inputData.NewRow();
                     for (int columnIndex = 0; columnIndex < loadedData.Columns.Count; columnIndex++)
                     {
-                        if (indicesOfNumericColumns.Contains(columnIndex) && loadedData.Rows[rowIndex][columnIndex] != DBNull.Value) // numeric data
-                            row[columnIndex] = double.Parse((string)loadedData.Rows[rowIndex][columnIndex]);
+                        if (numericColumns[columnIndex]) // numeric data
+                            row[columnIndex] = double.Parse((string)loadedData.Rows[rowIndex][columnIndex], NumberStyles.Float, CultureInfo.InvariantCulture);
                         else // string data
                             row[columnIndex] = (string)loadedData.Rows[rowIndex][columnIndex];
                     }
                     inputData.Rows.Add(row);
                 }
 
-                loadedData.AcceptChanges();
+                inputData.AcceptChanges();
 
                 // Return the data
                 return inputData;
             }
             else
             {
-                throw new Exception("Cannot open the selected file!");
+                throw new InvalidDataException("Cannot open the selected file. Select a CSV file.");
             }
         }
         #endregion

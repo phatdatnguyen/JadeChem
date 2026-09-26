@@ -58,8 +58,8 @@
                     isInvalidSplit = true;
                 else
                 {
-                    int trainSize = (int)(numberOfRows * SplitRatio);
-                    int testSize = numberOfRows - trainSize;
+                    int testSize = (int)Math.Round(numberOfRows * (1 - SplitRatio));
+                    int trainSize = numberOfRows - testSize;
 
                     if (trainSize <= 1 || testSize <= 1)
                         isInvalidSplit = true;

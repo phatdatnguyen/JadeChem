@@ -22,8 +22,16 @@ namespace JadeChem.Utils
 
         public void Fit(double[] inputs)
         {
+            ArgumentNullException.ThrowIfNull(inputs);
+            if (inputs.Length == 0 || inputs.Any(value => !double.IsFinite(value)))
+                throw new ArgumentException("Scaling requires at least one finite value and no missing or infinite values.", nameof(inputs));
+
             mean = inputs.Mean();
-            std = inputs.StandardDeviation();
+            std = inputs.Length == 1 ? 0 : inputs.StandardDeviation();
+            // A constant column carries no variance but must still produce finite
+            // values, including when fitted to a single training row.
+            if (std == 0)
+                std = 1;
         }
 
         public double[] Transform(double[] inputs)

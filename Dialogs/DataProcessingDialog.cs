@@ -38,6 +38,30 @@
             foreach (string columnName in OutputScalersDictionary.Keys)
                 columnListBox.Items.Add(columnName);
 
+            // These steps apply to all inputs, so restore them independently of
+            // the currently selected column when reopening the dialog.
+            resettingFilters = true;
+            try
+            {
+                foreach (ListViewItem item in processingStepsListView.Items)
+                {
+                    if (item.Group.Header != "Dimensionality Reduction")
+                        continue;
+
+                    item.Checked = DimensionalityReductionStepsDictionary.TryGetValue(item.Text, out var parameters);
+                    if (item.Checked && parameters != null)
+                    {
+                        if (item.Text == "Variance threshold")
+                            item.SubItems[1].Text = "{ threshold=" + parameters["threshold"].ToString() + " }";
+                        else if (item.Text == "Principle component analysis")
+                            item.SubItems[1].Text = "{ nComponents=" + parameters["nComponents"].ToString() + " }";
+                    }
+                }
+            }
+            finally
+            {
+                resettingFilters = false;
+            }
 
             // Select the first column
             if (columnListBox.Items.Count > 0)
@@ -134,7 +158,7 @@
                             InputScalersDictionary[columnListBox.Text][e.Item.Text] = (0, 1);
                     }
                     else
-                        InputScalersDictionary[columnListBox.Text] = new Dictionary<string, (double, double)>();
+                        InputScalersDictionary[columnListBox.Text].Remove(e.Item.Text);
                 }
                 else if (FeatureScalersDictionary.ContainsKey(columnListBox.Text))
                 {
@@ -149,7 +173,7 @@
                             FeatureScalersDictionary[columnListBox.Text][e.Item.Text] = (0, 1);
                     }
                     else
-                        FeatureScalersDictionary[columnListBox.Text] = new Dictionary<string, (double, double)>();
+                        FeatureScalersDictionary[columnListBox.Text].Remove(e.Item.Text);
                 }
                 else if (OutputScalersDictionary.ContainsKey(columnListBox.Text))
                 {
@@ -164,7 +188,7 @@
                             OutputScalersDictionary[columnListBox.Text][e.Item.Text] = (0, 1);
                     }
                     else
-                        OutputScalersDictionary[columnListBox.Text] = new Dictionary<string, (double, double)>();
+                        OutputScalersDictionary[columnListBox.Text].Remove(e.Item.Text);
                 }
 
             }
@@ -243,6 +267,12 @@
                 {
                     double minOutput = editParametersDialog.Parameters["Min output"];
                     double maxOutput = editParametersDialog.Parameters["Max output"];
+
+                    if (!double.IsFinite(minOutput) || !double.IsFinite(maxOutput) || minOutput >= maxOutput)
+                    {
+                        MessageBox.Show(this, "The scaling range must have finite bounds with minimum less than maximum.", "Invalid scaling range", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
 
                     processingStepsListView.Items[0].SubItems[1].Text = "{ range=(" + minOutput.ToString() + ", " + maxOutput.ToString() + ") }";
 

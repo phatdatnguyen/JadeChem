@@ -4,10 +4,12 @@ namespace JadeChem.CustomControls.DiagramControls
 {
     public partial class DecisionTreeViewControl : UserControl
     {
+        private Font? boldFont;
         #region Constructor
         public DecisionTreeViewControl()
         {
             InitializeComponent();
+            Disposed += (_, _) => boldFont?.Dispose();
         }
         #endregion
 
@@ -18,14 +20,16 @@ namespace JadeChem.CustomControls.DiagramControls
                 return;
 
             decisionTreeView.Nodes.Clear();
+            boldFont?.Dispose();
+            boldFont = new Font(Font, FontStyle.Bold);
 
             if (decisionTree.Root.IsLeaf)
             {
                 TreeNode treeNode = decisionTreeView.Nodes.Add("Root");
                 treeNode.ForeColor = Color.Brown;
                 int classIndex = decisionTree.Root.Output ?? -1;
-                treeNode.Nodes.Add(new TreeNode(classLabels[classIndex]));
-                treeNode.Nodes[0].NodeFont = new Font(Font, FontStyle.Bold);
+                treeNode.Nodes.Add(new TreeNode(GetClassLabel(classLabels, classIndex)));
+                treeNode.Nodes[0].NodeFont = boldFont;
 
                 decisionTreeView.ExpandAll();
                 return;
@@ -33,7 +37,7 @@ namespace JadeChem.CustomControls.DiagramControls
 
             TreeNode rootNode = decisionTreeView.Nodes.Add("Root");
             rootNode.ForeColor = Color.Brown;
-            rootNode.NodeFont = new Font(Font, FontStyle.Bold);
+            rootNode.NodeFont = boldFont;
             foreach (DecisionNode decisionNode in decisionTree.Root.Branches)
                 rootNode.Nodes.Add(ConvertToTreeNode(decisionNode, inputColumnNames, classLabels));
 
@@ -79,12 +83,15 @@ namespace JadeChem.CustomControls.DiagramControls
             else
             {
                 int classIndex = decisionNode.Output ?? -1;
-                treeNode.Nodes.Add(new TreeNode(classLabels[classIndex]));
+                treeNode.Nodes.Add(new TreeNode(GetClassLabel(classLabels, classIndex)));
                 treeNode.Nodes[0].ForeColor = Color.Green;
-                treeNode.Nodes[0].NodeFont = new Font(Font, FontStyle.Bold);
+                treeNode.Nodes[0].NodeFont = boldFont;
                 return treeNode;
             }
         }
+
+        private static string GetClassLabel(string[] classLabels, int classIndex) =>
+            classIndex >= 0 && classIndex < classLabels.Length ? classLabels[classIndex] : "Unclassified";
         #endregion
     }
 }

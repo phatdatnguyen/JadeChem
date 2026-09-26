@@ -1,4 +1,4 @@
-﻿using JadeChem.Drawing;
+using JadeChem.Drawing;
 using System.Drawing.Drawing2D;
 using System.Reflection;
 
@@ -84,6 +84,21 @@ namespace JadeChem.CustomControls.DiagramControls
         public WorkflowDiagramControl()
         {
             InitializeComponent();
+            Disposed += (_, _) =>
+            {
+                normalPen.Dispose();
+                highlightPen.Dispose();
+                outlinePen.Dispose();
+                dashedOutlinePen.Dispose();
+                fillBrush1.Dispose();
+                fillBrush2.Dispose();
+                fillBrush3.Dispose();
+                fillBrush4.Dispose();
+                normalArrowBrush.Dispose();
+                highlightBrush.Dispose();
+                modelBlock?.Dispose();
+                modelBlockPath?.Dispose();
+            };
 
             // Enable double buffering for the diagramPanel
             typeof(Panel).InvokeMember("DoubleBuffered",
@@ -131,6 +146,8 @@ namespace JadeChem.CustomControls.DiagramControls
         {
             // Create a Graphics object for drawing on the panel
             Graphics g = e.Graphics;
+            using StringFormat centered = new() { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+            using StringFormat horizontallyCentered = new() { Alignment = StringAlignment.Center };
 
             // Draw the inputDataBlock with highlight if hovered
             if (isInputDataBlockHovered)
@@ -141,7 +158,7 @@ namespace JadeChem.CustomControls.DiagramControls
             {
                 g.FillRectangle(fillBrush1, inputDataBlock);
             }
-            g.DrawString("Input data", Font, textBrush, inputDataBlock, new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+            g.DrawString("Input data", Font, textBrush, inputDataBlock, centered);
             if (isInputDataLoaded)
             {
                 g.DrawRectangle(outlinePen, inputDataBlock);
@@ -156,7 +173,7 @@ namespace JadeChem.CustomControls.DiagramControls
             {
                 g.FillRectangle(fillBrush1, processedDataBlock);
             }
-            g.DrawString("Processed data", Font, textBrush, processedDataBlock, new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+            g.DrawString("Processed data", Font, textBrush, processedDataBlock, centered);
             if (isProcessedDataLoaded)
             {
                 g.DrawRectangle(outlinePen, processedDataBlock);
@@ -172,7 +189,7 @@ namespace JadeChem.CustomControls.DiagramControls
                 Drawing.Drawing.DrawArrow(g, normalPen, normalArrowBrush, processDataArrow);
             }
             Point processingTextPoint = new((processDataArrow.StartPoint.X + processDataArrow.EndPoint.X) / 2, processDataArrow.StartPoint.Y - 20);
-            g.DrawString("processing", Font, textBrush, processingTextPoint, new StringFormat { Alignment = StringAlignment.Center });
+            g.DrawString("processing", Font, textBrush, processingTextPoint, horizontallyCentered);
 
             // Draw trainDatasetBlock with highlight if hovered
             if (isTrainDatasetBlockHovered)
@@ -183,7 +200,7 @@ namespace JadeChem.CustomControls.DiagramControls
             {
                 g.FillRectangle(fillBrush1, trainDatasetBlock);
             }
-            g.DrawString("Train Dataset", Font, textBrush, trainDatasetBlock, new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+            g.DrawString("Train Dataset", Font, textBrush, trainDatasetBlock, centered);
             if (isTrainDatasetLoaded)
             {
                 g.DrawRectangle(outlinePen, trainDatasetBlock);
@@ -198,7 +215,7 @@ namespace JadeChem.CustomControls.DiagramControls
             {
                 g.FillRectangle(fillBrush1, testDatasetBlock);
             }
-            g.DrawString("Test Dataset", Font, textBrush, testDatasetBlock, new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+            g.DrawString("Test Dataset", Font, textBrush, testDatasetBlock, centered);
             if (isTestDatasetLoaded)
             {
                 g.DrawRectangle(outlinePen, testDatasetBlock);
@@ -214,7 +231,7 @@ namespace JadeChem.CustomControls.DiagramControls
                 Drawing.Drawing.DrawSplitArrow(g, normalPen, normalArrowBrush, trainTestSplitArrow);
             }
             Point trainTestSplitTextPoint = new((trainTestSplitArrow.StartPoint.X + trainTestSplitArrow.SplitPoint1.X) / 2, trainTestSplitArrow.StartPoint.Y - 20);
-            e.Graphics.DrawString("train-test split", Font, textBrush, trainTestSplitTextPoint, new StringFormat { Alignment = StringAlignment.Center });
+            e.Graphics.DrawString("train-test split", Font, textBrush, trainTestSplitTextPoint, horizontallyCentered);
 
             // Draw the modelBlock with highlight if hovered
             if (isModelBlockHovered)
@@ -225,7 +242,7 @@ namespace JadeChem.CustomControls.DiagramControls
             {
                 e.Graphics.FillRegion(fillBrush2, modelBlock);
             }
-            g.DrawString("Model", Font, textBrush, modelBlockBound, new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+            g.DrawString("Model", Font, textBrush, modelBlockBound, centered);
             if (isModelLoaded && !isModelTrained)
             {
                 g.DrawPath(dashedOutlinePen, modelBlockPath);
@@ -245,7 +262,7 @@ namespace JadeChem.CustomControls.DiagramControls
                 Drawing.Drawing.DrawArrow(g, normalPen, normalArrowBrush, trainArrow);
             }
             Point trainTextPoint = new((trainArrow.StartPoint.X + trainArrow.EndPoint.X) / 2, trainArrow.StartPoint.Y - 20);
-            g.DrawString("train", Font, textBrush, trainTextPoint, new StringFormat { Alignment = StringAlignment.Center });
+            g.DrawString("train", Font, textBrush, trainTextPoint, horizontallyCentered);
 
             // Draw the evaluationBlock with highlight if hovered
             if (isEvaluationBlockHovered)
@@ -256,7 +273,7 @@ namespace JadeChem.CustomControls.DiagramControls
             {
                 e.Graphics.FillRectangle(fillBrush3, evaluationBlock);
             }
-            g.DrawString("Evaluation", Font, textBrush, evaluationBlock, new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+            g.DrawString("Evaluation", Font, textBrush, evaluationBlock, centered);
             if (isModelEvaluated)
             {
                 g.DrawRectangle(outlinePen, evaluationBlock);
@@ -280,7 +297,7 @@ namespace JadeChem.CustomControls.DiagramControls
                 Drawing.Drawing.DrawArrow(g, normalPen, normalArrowBrush, testArrow2);
             }
             Point testTextPoint = new((testArrow2.StartPoint.X + testArrow2.EndPoint.X) / 2, testArrow2.StartPoint.Y - 20);
-            g.DrawString("test", Font, textBrush, testTextPoint, new StringFormat { Alignment = StringAlignment.Center });
+            g.DrawString("test", Font, textBrush, testTextPoint, horizontallyCentered);
 
             // Draw the predictionBlock with highlight if hovered
             if (isPredictionBlockHovered)
@@ -291,7 +308,7 @@ namespace JadeChem.CustomControls.DiagramControls
             {
                 e.Graphics.FillRectangle(fillBrush4, predictionBlock);
             }
-            g.DrawString("Prediction", Font, textBrush, predictionBlock, new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+            g.DrawString("Prediction", Font, textBrush, predictionBlock, centered);
 
             // Draw the predictArrow with highlight if hovered
             if (isPredictArrowHovered)
@@ -303,7 +320,7 @@ namespace JadeChem.CustomControls.DiagramControls
                 Drawing.Drawing.DrawArrow(g, normalPen, normalArrowBrush, predictArrow);
             }
             Point predictTextPoint = new((predictArrow.StartPoint.X + predictArrow.EndPoint.X) / 2, predictArrow.StartPoint.Y - 20);
-            g.DrawString("predict", Font, textBrush, predictTextPoint, new StringFormat { Alignment = StringAlignment.Center });
+            g.DrawString("predict", Font, textBrush, predictTextPoint, horizontallyCentered);
         }
 
         private void DiagramPanel_MouseMove(object sender, MouseEventArgs e)

@@ -6,7 +6,6 @@ namespace JadeChem.Dialogs
     {
         #region Fields
         private readonly RWMol molecule;
-        private readonly string imageFileName = Directory.GetCurrentDirectory() + "\\SelectedMolecule.png";
         #endregion
 
         #region Contructor
@@ -21,19 +20,29 @@ namespace JadeChem.Dialogs
         #region Methods
         private void MoleculeDialog_Load(object sender, EventArgs e)
         {
-            smilesTextBox.Text = molecule.MolToSmiles();
+            string imageFileName = Path.Combine(Path.GetTempPath(), $"JadeChem-{Guid.NewGuid():N}.png");
+            try
+            {
+                smilesTextBox.Text = molecule.MolToSmiles();
+                RDKFuncs.prepareMolForDrawing(molecule);
+                using MolDraw2DCairo view = new(1024, 1024);
+                view.drawMolecule(molecule);
+                view.finishDrawing();
+                view.writeDrawingText(imageFileName);
 
-            // Make a picture of molecule and save it to a file
-            RDKFuncs.prepareMolForDrawing(molecule);
-
-            MolDraw2DCairo view = new(1024, 1024);
-            view.drawMolecule(molecule);
-            view.finishDrawing();
-            view.writeDrawingText(imageFileName);
-
-            // Load the picture from file
-            Image image = Image.FromFile(imageFileName);
-            moleculePictureBox.Image = image;
+                using Image image = Image.FromFile(imageFileName);
+                moleculePictureBox.Image = new Bitmap(image);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Cannot display molecule", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Close();
+            }
+            finally
+            {
+                if (File.Exists(imageFileName))
+                    File.Delete(imageFileName);
+            }
         }
 
         private void CloseButton_Click(object sender, EventArgs e)
@@ -43,8 +52,8 @@ namespace JadeChem.Dialogs
 
         private void MoleculeDialog_FormClosed(object sender, FormClosedEventArgs e)
         {
-            moleculePictureBox.Image.Dispose();
-            File.Delete(imageFileName);
+            moleculePictureBox.Image?.Dispose();
+            moleculePictureBox.Image = null;
         }
         #endregion
     }

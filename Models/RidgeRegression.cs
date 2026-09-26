@@ -1,69 +1,44 @@
-﻿using MathNet.Numerics.LinearAlgebra;
+using MathNet.Numerics.LinearAlgebra;
 
 namespace JadeChem.Models
 {
     public class RidgeRegression
     {
-        #region Fields
         private readonly double lambda;
-        private Vector<double> coefficients;
-        #endregion
+        private Vector<double>? coefficients;
 
-        #region Property
-        public double[] Coefficients { get { return coefficients.ToArray(); } }
-        #endregion
+        public double[] Coefficients => RegressionMath.RequireFitted(coefficients).ToArray();
 
-        #region Constructor
         public RidgeRegression(double lambda)
         {
+            RegressionMath.ValidatePenalty(lambda);
             this.lambda = lambda;
         }
-        #endregion
 
-        #region Methods
         public void Learn(double[][]? inputColumns, double[]? outputColumn)
         {
-            if (inputColumns == null)
-                throw new ArgumentNullException(nameof(inputColumns));
-
-            if (outputColumn == null)
-                throw new ArgumentNullException(nameof(inputColumns));
-
-            Matrix<double> inputMatrix = Matrix<double>.Build.DenseOfRowArrays(inputColumns);
-            inputMatrix = inputMatrix.Append(Matrix<double>.Build.Dense(inputMatrix.RowCount, 1, 1)); // Add a column of 1s for intercept
-            Vector<double> outputVector = Vector<double>.Build.Dense(outputColumn);
-
-            Matrix<double> inputMatrixTranspose = inputMatrix.Transpose();
-            Matrix<double> identityMatrix = Matrix<double>.Build.DenseIdentity(inputMatrix.ColumnCount);
-            coefficients = (inputMatrixTranspose * inputMatrix + lambda * identityMatrix).Inverse() * inputMatrixTranspose * outputVector;
-        }
-
-        public double[] Transform(double[][]? inputColumns)
-        {
-            if (inputColumns == null)
-                throw new ArgumentNullException(nameof(inputColumns));
-
-            double[] transformedData = new double[inputColumns.Length];
-
-            for (int rowIndex = 0; rowIndex < inputColumns.Length; rowIndex++)
+            var (inputs, outputs) = RegressionMath.Prepare(inputColumns, outputColumn);
+            if (lambda > 0)
             {
-                Vector<double> inputVector = Vector<double>.Build.DenseOfArray(inputColumns[rowIndex]);
-                inputVector = Vector<double>.Build.DenseOfEnumerable(inputVector.Append(1)); // For intercept
-                transformedData[rowIndex] = inputVector.DotProduct(coefficients);
+                // Solve augmented least squares directly, leaving the intercept unpenalized.
+                // Avoid forming/inverting X'X, which squares its condition number.
+                int featureCount = inputs.ColumnCount - 1;
+                var penalty = Matrix<double>.Build.Dense(featureCount, inputs.ColumnCount);
+                for (int column = 0; column < featureCount; column++)
+                    penalty[column, column] = Math.Sqrt(lambda);
+                inputs = inputs.Stack(penalty);
+                outputs = Vector<double>.Build.DenseOfEnumerable(outputs.Concat(new double[featureCount]));
             }
 
-            return transformedData;
+            // PseudoInverse truncates zero singular values; SVD.Solve divides by them.
+            var fitted = inputs.PseudoInverse() * outputs;
+            if (fitted.Any(value => !double.IsFinite(value)))
+                throw new InvalidOperationException("Training produced non-finite coefficients. Scale the input features.");
+            coefficients = fitted;
         }
 
-        public double Transform(double[]? inputRow)
-        {
-            if (inputRow == null)
-                throw new ArgumentNullException(nameof(inputRow));
+        public double[] Transform(double[][]? inputColumns) => RegressionMath.Transform(inputColumns, coefficients);
 
-            Vector<double> inputVector = Vector<double>.Build.DenseOfArray(inputRow);
-            inputVector = Vector<double>.Build.DenseOfEnumerable(inputVector.Append(1)); // For intercept
-            return inputVector.DotProduct(coefficients);
-        }
-        #endregion
+        public double Transform(double[]? inputRow) => RegressionMath.Transform(inputRow, coefficients);
     }
 }

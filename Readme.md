@@ -31,3 +31,8 @@ A Windows GUI software for performing machine learning (ML) tasks in chemistry.
   *** The ML models in this software are from [Accord.net](http://accord-framework.net/) and [TorchSharp](https://github.com/dotnet/TorchSharp) frameworks.
   
   ***User should have administrator right to fully utilize this software.***
+
+## Regression checks
+
+On Windows, run `dotnet run --project tests/JadeChem.RegressionChecks.csproj`.
+See [tests/README.md](tests/README.md) for coverage, behavior changes, and remaining limitations.

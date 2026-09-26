@@ -13,6 +13,12 @@
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
+            if (disposing)
+            {
+                ReleaseTrainingResources();
+                mlp?.Dispose();
+                mlp = null;
+            }
             if (disposing && (components != null))
             {
                 components.Dispose();
@@ -184,6 +190,7 @@
             // 
             epochsNumericUpDown.Location = new Point(78, 141);
             epochsNumericUpDown.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
+            epochsNumericUpDown.Minimum = 1;
             epochsNumericUpDown.Name = "epochsNumericUpDown";
             epochsNumericUpDown.Size = new Size(121, 23);
             epochsNumericUpDown.TabIndex = 7;
@@ -498,6 +505,7 @@
             // 
             saveIntervalNumericUpDown.Location = new Point(297, 114);
             saveIntervalNumericUpDown.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
+            saveIntervalNumericUpDown.Minimum = 1;
             saveIntervalNumericUpDown.Name = "saveIntervalNumericUpDown";
             saveIntervalNumericUpDown.Size = new Size(120, 23);
             saveIntervalNumericUpDown.TabIndex = 6;

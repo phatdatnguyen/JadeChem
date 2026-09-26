@@ -51,7 +51,7 @@ namespace JadeChem.CustomControls.ModelControls
         private string logFolderPath = Directory.GetCurrentDirectory();
         private string saveFolderPath = Directory.GetCurrentDirectory();
 
-        private SummaryWriter summaryWriter;
+        private SummaryWriter? summaryWriter;
 
         private readonly List<int> trainEpochs = new();
         private readonly List<float> trainLosses = new();
@@ -121,7 +121,6 @@ namespace JadeChem.CustomControls.ModelControls
             saveFolderBrowserDialog.InitialDirectory = saveFolderPath;
             loadCheckpointFileDialog.InitialDirectory = saveFolderPath;
             logFolderBrowserDialog.InitialDirectory = logFolderPath;
-            summaryWriter = torch.utils.tensorboard.SummaryWriter(logFolderPath);
 
             dataTypeComboBox.SelectedIndex = 1;
             optimizerComboBox.SelectedIndex = 2;
@@ -175,7 +174,6 @@ namespace JadeChem.CustomControls.ModelControls
             saveFolderBrowserDialog.InitialDirectory = saveFolderPath;
             loadCheckpointFileDialog.InitialDirectory = saveFolderPath;
             logFolderBrowserDialog.InitialDirectory = logFolderPath;
-            summaryWriter = torch.utils.tensorboard.SummaryWriter(logFolderPath);
 
             dataTypeComboBox.SelectedIndex = 1;
             optimizerComboBox.SelectedIndex = 2;
@@ -270,7 +268,7 @@ namespace JadeChem.CustomControls.ModelControls
             if (logFolderBrowserDialog.ShowDialog(this) == DialogResult.OK)
             {
                 logFolderPath = logFolderBrowserDialog.SelectedPath;
-                summaryWriter = torch.utils.tensorboard.SummaryWriter(logFolderPath);
+                summaryWriter = null;
             }
         }
 
@@ -371,8 +369,18 @@ namespace JadeChem.CustomControls.ModelControls
                 int randomSeed = (int)randomSeedNumericUpDown.Value;
                 torch.random.manual_seed(randomSeed);
                 torch.cuda.manual_seed(randomSeed);
-                mlp = new MLP(networkNameTextBox.Text, inputSize, hiddenSizes, activationFunctions, outputSize);
-                mlp = mlp.to(deviceType);
+                MLP newModel = new(networkNameTextBox.Text, inputSize, hiddenSizes, activationFunctions, outputSize);
+                try
+                {
+                    newModel = newModel.to(dataType).to(deviceType);
+                }
+                catch
+                {
+                    newModel.Dispose();
+                    throw;
+                }
+                mlp?.Dispose();
+                mlp = newModel;
                 trainedEpochs = 0;
 
                 // Reset the losses visualization
@@ -405,30 +413,14 @@ namespace JadeChem.CustomControls.ModelControls
             {
                 try
                 {
-                    // Load the MLP model from a checkpoint
-                    MLP loadedCheckpoint = (MLP)mlp.load(loadCheckpointFileDialog.FileName);
-                    string fileName = loadCheckpointFileDialog.SafeFileName;
-                    fileName = fileName.Remove(fileName.IndexOf(".ckpt"));
-                    trainedEpochs = int.Parse(fileName.Split('_').Last());
+                    // Load into a separate network so corrupt/incompatible files cannot alter the current weights.
+                    MLP loadedCheckpoint = LoadCheckpoint(mlp, loadCheckpointFileDialog.FileName, dataType, deviceType);
+                    string fileName = Path.GetFileNameWithoutExtension(loadCheckpointFileDialog.SafeFileName);
+                    trainedEpochs = int.TryParse(fileName.Split('_').Last(), out int checkpointEpochs)
+                        && checkpointEpochs >= 0 ? checkpointEpochs : 0;
+                    mlp.Dispose();
                     mlp = loadedCheckpoint;
-                    mlp = mlp.to(deviceType);
-
-                    // Update the hiddenLayersListView
-                    for (int moduleIndex = 0; moduleIndex < mlp.Sequential.Count; moduleIndex++)
-                    {
-                        if (moduleIndex % 2 == 1)
-                        {
-                            torch.nn.IModule<torch.Tensor, torch.Tensor> module = mlp.Sequential[moduleIndex];
-                            if (module.GetType() == typeof(LeakyReLU))
-                                hiddenLayersListView.Items[moduleIndex / 2].SubItems[2].Text = "LeakyReLU";
-                            else if (module.GetType() == typeof(ReLU))
-                                hiddenLayersListView.Items[moduleIndex / 2].SubItems[2].Text = "ReLU";
-                            else if (module.GetType() == typeof(Sigmoid))
-                                hiddenLayersListView.Items[moduleIndex / 2].SubItems[2].Text = "Sigmoid";
-                            else if (module.GetType() == typeof(Tanh))
-                                hiddenLayersListView.Items[moduleIndex / 2].SubItems[2].Text = "Tanh";
-                        }
-                    }
+                    // Checkpoints contain weights; the current network's architecture is unchanged.
 
                     // Reset the losses visualization
                     trainEpochs.Clear();
@@ -436,6 +428,7 @@ namespace JadeChem.CustomControls.ModelControls
                     validationEpochs.Clear();
                     validationLosses.Clear();
                     visualizeLossesButton.Enabled = false;
+                    ModelTrained?.Invoke(new ModelEventArgs { Model = mlp });
                 }
                 catch
                 {
@@ -453,6 +446,8 @@ namespace JadeChem.CustomControls.ModelControls
             }
 
             Dictionary<int, (Dictionary<int, (List<double>, double)>, string)> mlpNetworkStructure = new();
+            using var tensorScope = torch.NewDisposeScope();
+            using var noGrad = torch.no_grad();
 
             // Hidden layers and output layer
             int layerIndex = 0;
@@ -686,54 +681,47 @@ namespace JadeChem.CustomControls.ModelControls
                 if (trainWithValidation && validationInputColumns == null)
                     throw new Exception("In order to train with validation, you have to split the train dataset!");
 
-                // Prepare inputs and outputs
-                if (!trainWithValidation)
-                {
-                    trainInputColumns = inputColumns;
-                    if (predictionType == PredictionTaskForm.PredictionType.Regression)
-                        trainOutputColumnForRegression = outputColumnForRegression;
-                    else
-                    {
-                        trainOutputColumnForClassification = outputColumnForClassification;
-                        trainClassIndices = classIndices;
-                    }
-                }
-
-                xTrain = torch.tensor(trainInputColumns.ToMatrix(), dataType);
+                // Keep the saved split intact when temporarily training on the full dataset.
+                double[][]? activeInputs = trainWithValidation ? trainInputColumns : inputColumns;
+                double[]? activeRegressionOutputs = trainWithValidation ? trainOutputColumnForRegression : outputColumnForRegression;
+                string[]? activeClassificationOutputs = trainWithValidation ? trainOutputColumnForClassification : outputColumnForClassification;
+                int[]? activeClassIndices = trainWithValidation ? trainClassIndices : classIndices;
+                var trainingDevice = torch.device(deviceType);
+                xTrain = torch.tensor(activeInputs.ToMatrix(), dataType, device: trainingDevice);
                 if (trainWithValidation)
-                    xValidation = torch.tensor(validationInputColumns.ToMatrix(), dataType);
+                    xValidation = torch.tensor(validationInputColumns.ToMatrix(), dataType, device: trainingDevice);
 
                 switch (predictionType)
                 {
                     case PredictionTaskForm.PredictionType.BinaryClassification:
-                        if (trainClassIndices != null)
-                            yTrain = torch.tensor(trainClassIndices, dataType).unsqueeze(1);
+                        if (activeClassIndices != null)
+                            yTrain = torch.tensor(activeClassIndices.ToJagged().ToMatrix(), dataType, device: trainingDevice);
 
                         if (trainWithValidation && validationClassIndices != null)
-                            yValidation = torch.tensor(validationClassIndices, dataType).unsqueeze(1);
+                            yValidation = torch.tensor(validationClassIndices.ToJagged().ToMatrix(), dataType, device: trainingDevice);
 
                         break;
                     case PredictionTaskForm.PredictionType.MulticlassClassification:
                         // Encode the output column with OneHotEncoder
-                        if (trainOutputColumnForClassification != null)
+                        if (activeClassificationOutputs != null)
                         {
-                            byte[][] encodedTrainOutputColumns = oneHotEncoder.Transform(trainOutputColumnForClassification);
-                            yTrain = torch.tensor(encodedTrainOutputColumns.ToMatrix(), dataType);
+                            byte[][] encodedTrainOutputColumns = oneHotEncoder.Transform(activeClassificationOutputs);
+                            yTrain = torch.tensor(encodedTrainOutputColumns.ToMatrix(), dataType, device: trainingDevice);
                         }
 
                         if (trainWithValidation && validationOutputColumnForClassification != null)
                         {
                             byte[][] encodedValidationOutputColumns = oneHotEncoder.Transform(validationOutputColumnForClassification);
-                            yValidation = torch.tensor(encodedValidationOutputColumns.ToMatrix(), dataType);
+                            yValidation = torch.tensor(encodedValidationOutputColumns.ToMatrix(), dataType, device: trainingDevice);
                         }
 
                         break;
                     case PredictionTaskForm.PredictionType.Regression:
-                        if (trainOutputColumnForRegression != null)
-                            yTrain = torch.tensor(trainOutputColumnForRegression, dataType).unsqueeze(1);
+                        if (activeRegressionOutputs != null)
+                            yTrain = torch.tensor(activeRegressionOutputs.ToJagged().ToMatrix(), dataType, device: trainingDevice);
 
                         if (trainWithValidation && validationOutputColumnForRegression != null)
-                            yValidation = torch.tensor(validationOutputColumnForRegression, dataType).unsqueeze(1);
+                            yValidation = torch.tensor(validationOutputColumnForRegression.ToJagged().ToMatrix(), dataType, device: trainingDevice);
 
                         break;
                 }
@@ -742,6 +730,8 @@ namespace JadeChem.CustomControls.ModelControls
                 mlp = mlp.to(dataType).to(deviceType);
                 optimizer = CreateOptimizer();
                 lrScheduler = CreateLRScheduler();
+                if (logWithTensorboard)
+                    summaryWriter ??= torch.utils.tensorboard.SummaryWriter(logFolderPath);
 
                 // Training
                 int randomSeed = (int)randomSeedNumericUpDown.Value;
@@ -756,26 +746,22 @@ namespace JadeChem.CustomControls.ModelControls
                 for (int epochIndex = startEpochIndex; epochIndex < startEpochIndex + epochs; epochIndex++)
                 {
                     // Forward and calculate losses
-                    xTrain = xTrain.to(deviceType);
-                    yTrain = yTrain.to(deviceType);
                     float trainLoss = Train(xTrain, yTrain);
 
                     trainEpochs.Add(epochIndex + 1);
                     trainLosses.Add(trainLoss);
                     if (logWithTensorboard)
-                        summaryWriter.add_scalar("Loss/Train", trainLoss, epochIndex + 1);
+                        summaryWriter!.add_scalar("Loss/Train", trainLoss, epochIndex + 1);
 
                     float validationLoss = 0;
                     if (trainWithValidation)
                     {
-                        xValidation = xValidation.to(deviceType);
-                        yValidation = yValidation.to(deviceType);
                         validationLoss = Validate(xValidation, yValidation);
 
                         validationEpochs.Add(epochIndex + 1);
                         validationLosses.Add(validationLoss);
                         if (logWithTensorboard)
-                            summaryWriter.add_scalar("Loss/Validation", validationLoss, epochIndex + 1);
+                            summaryWriter!.add_scalar("Loss/Validation", validationLoss, epochIndex + 1);
                     }
 
                     // Advance the learning rate schedule
@@ -820,16 +806,15 @@ namespace JadeChem.CustomControls.ModelControls
             }
             catch (Exception ex)
             {
-                trainingStopwatch.Stop();
-                trainingStopwatch.Reset();
                 MessageBox.Show(this, ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                Cursor = Cursors.Default;
                 return;
             }
-
-            trainingStopwatch.Stop();
-            trainingStopwatch.Reset();
-            Cursor = Cursors.Default;
+            finally
+            {
+                ReleaseTrainingResources();
+                trainingStopwatch.Reset();
+                Cursor = Cursors.Default;
+            }
 
             // Raise the event
             ModelTrained?.Invoke(new ModelEventArgs { Model = mlp });
@@ -1007,6 +992,7 @@ namespace JadeChem.CustomControls.ModelControls
             if (mlp == null || optimizer == null)
                 return -1;
 
+            using var tensorScope = torch.NewDisposeScope();
             mlp.train();
             torch.Tensor output = mlp.forward(input);
             torch.Tensor loss;
@@ -1015,7 +1001,7 @@ namespace JadeChem.CustomControls.ModelControls
             else if (predictionType == PredictionTaskForm.PredictionType.MulticlassClassification)
                 loss = torch.nn.functional.cross_entropy(output, expectedOutput);
             else // Regression
-                loss = torch.nn.functional.mse_loss(output, expectedOutput, torch.nn.Reduction.Sum);
+                loss = torch.nn.functional.mse_loss(output, expectedOutput, torch.nn.Reduction.Mean);
 
             optimizer.zero_grad();
             loss.backward();
@@ -1029,6 +1015,8 @@ namespace JadeChem.CustomControls.ModelControls
             if (mlp == null)
                 return -1;
 
+            using var tensorScope = torch.NewDisposeScope();
+            using var noGrad = torch.no_grad();
             mlp.eval();
             torch.Tensor output = mlp.forward(input);
             torch.Tensor loss;
@@ -1037,31 +1025,63 @@ namespace JadeChem.CustomControls.ModelControls
             else if (predictionType == PredictionTaskForm.PredictionType.MulticlassClassification)
                 loss = torch.nn.functional.cross_entropy(output, expectedOutput);
             else // Regression
-                loss = torch.nn.functional.mse_loss(output, expectedOutput, torch.nn.Reduction.Sum);
+                loss = torch.nn.functional.mse_loss(output, expectedOutput, torch.nn.Reduction.Mean);
 
             return loss.cpu().detach().ToSingle();
         }
 
+        private void ReleaseTrainingResources()
+        {
+            xTrain?.Dispose();
+            yTrain?.Dispose();
+            xValidation?.Dispose();
+            yValidation?.Dispose();
+            xTrain = yTrain = xValidation = yValidation = null;
+            lrScheduler = null;
+            optimizer?.Dispose();
+            optimizer = null;
+        }
+
         private static bool SaveCheckpoint(MLP model, string saveFolderPath, string checkpointName)
         {
-            bool isSaveSuccessful;
+            string? temporaryPath = null;
             try
             {
-                string filePath = saveFolderPath + "\\" + checkpointName;
-
-                if (File.Exists(filePath))
-                    File.Delete(filePath);
-
-                model.save(filePath);
-
-                isSaveSuccessful = true;
+                string filePath = Path.Combine(saveFolderPath, checkpointName);
+                temporaryPath = Path.Combine(saveFolderPath, "." + Guid.NewGuid().ToString("N") + ".ckpt.tmp");
+                model.save(temporaryPath);
+                File.Move(temporaryPath, filePath, overwrite: true);
+                return true;
             }
             catch
             {
-                isSaveSuccessful = false;
+                return false;
             }
+            finally
+            {
+                if (temporaryPath != null)
+                {
+                    try { File.Delete(temporaryPath); }
+                    catch (IOException) { }
+                    catch (UnauthorizedAccessException) { }
+                }
+            }
+        }
 
-            return isSaveSuccessful;
+        private static MLP LoadCheckpoint(MLP currentModel, string filePath, torch.ScalarType scalarType, DeviceType targetDevice)
+        {
+            MLP loadedModel = currentModel.CreateWithSameArchitecture();
+            try
+            {
+                loadedModel = loadedModel.to(scalarType).to(targetDevice);
+                loadedModel.load(filePath);
+                return loadedModel;
+            }
+            catch
+            {
+                loadedModel.Dispose();
+                throw;
+            }
         }
 
         private void VisualizeLossesButton_Click(object sender, EventArgs e)
